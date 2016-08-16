@@ -62,14 +62,33 @@ impl Theme {
     
 enum Help {
     Default,
-    New
+    New,
+    Select,
+}
+
+fn select_theme(name: String, themes: &Vec<Theme>, conf_path: &std::path::Path) -> Option<String> {
+    match themes.iter().find(|&t| t.name == name) {
+        Some(_) => {
+            let mut conf_file = std::fs::OpenOptions::new().write(true).open(conf_path).unwrap();
+            conf_file.set_len(0);
+            conf_file.write_all(("selected ".to_string() + &name).as_str().as_bytes());
+            println!("Selected theme '{}'.", name);
+            Some(name)
+        },
+        None => {
+            println!("Error: theme '{}' does not exist.", name);
+            print_help(Help::Select);
+            None
+        }
+    }
 }
 
 fn print_help(command: Help) {
     let usage = "USAGE:\n\tricem <command> [command-specific-args]\n";
     let help = "\thelp, h\n\t\tprints this help message\n";
     let version = "\tversion, v\n\t\tprints program version\n";
-    let new = "\tnew, n\t[theme_name]\n\t\tcreates a new empty theme named [theme_name]\n";
+    let new = "\tnew, n   [theme_name]\n\t\tcreates a new empty theme named [theme_name]\n";
+    let select = "\tselect, e   [theme_name]\n\t\tselects the theme named [theme_name]\n";
     match command {
         Help::Default => {
             println!("{}", usage);
@@ -77,23 +96,29 @@ fn print_help(command: Help) {
             println!("{}", help);
             println!("{}", version);
             println!("{}", new);
+            println!("{}", select);
         },
         Help::New => {
             println!("{}", new);
         },
+        Help::Select => {
+            println!("{}", select);
+        },
     }
 
 }
+    
+    
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-
+    
     let mut ricem_dir = std::env::home_dir().unwrap();
     ricem_dir.push(".ricem");
     ricem_dir.as_path();
 
     let conf_path = ricem_dir.join(".conf");
-    
+
 
     match std::fs::read_dir(&ricem_dir) {
         Err(_) => {
@@ -160,7 +185,6 @@ fn main() {
                     println!("Error: need to provide a name for the new theme");
                     print_help(Help::New);
                     return;
-
                 }
                 
                 //&themes.iter().find(|&t| t.name == args[2]).unwrap().name
@@ -174,19 +198,28 @@ fn main() {
 
                 themes.push(Theme::new(args[2].clone()));
 
-                selected_theme = args[2].clone();
-
-                let mut conf_file = std::fs::OpenOptions::new().write(true).open(conf_path).unwrap();
-                conf_file.set_len(0);
-                conf_file.write_all(("selected ".to_string() + &selected_theme).as_str().as_bytes());
-//                conf_file.sync_all();
-
+                match select_theme(args[2].clone(), &themes, &conf_path) {
+                    Some(name) => selected_theme = name,
+                    None => {}
+                }
             },
             "status" | "s" => {
                 if selected_theme.is_empty() {
                     println!("No theme currently selected");
                 } else {
                     println!("Currently selected theme is {}", selected_theme);
+                }
+            },
+            "select" | "e" => {
+                if args.len() < 3 {
+                    println!("Error: need to provide a name for which theme to select.");
+                    print_help(Help::Select);
+                    return;
+                }
+
+                match select_theme(args[2].clone(), &themes, &conf_path) {
+                    Some(name) => selected_theme = name,
+                    None => {}
                 }
             },
             _ => {}
