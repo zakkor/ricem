@@ -28,23 +28,96 @@ fn detect_distro() -> &'static str {
     distro_name
 }
 
-fn print_help() {
-    println!("USAGE:\n\tricem <command> [command-specific-args]\n");
-    println!("COMMANDS:\n\thelp, -h, --help\n\t\tprints this help message\n");
-    println!("\tversion, -v, -V, --version\n\t\tprints program version\n");
+/*
+struct Command {
+    name: &'static str,
+    short_name: &'static str
+}
+ */
+
+struct ConfigFile {
+    name: String,
+    path: String
+}
+
+struct Theme<'a> {
+    name: &'a String,
+    tracking: Vec<ConfigFile>,
+}
+
+impl<'a> Theme<'a> {
+    fn new(name: &'a String) -> Self {
+        Theme {
+            name: name,
+            tracking: vec![]
+        }
+    }
+}
+    
+enum Help {
+    Default,
+    New
+}
+
+fn print_help(command: Help) {
+    let usage = "USAGE:\n\tricem <command> [command-specific-args]\n";
+    let help = "\thelp, h\n\t\tprints this help message\n";
+    let version = "\tversion, v\n\t\tprints program version\n";
+    let new = "\tnew, n\t[theme_name]\n\t\tcreates a new empty theme named [theme_name]\n";
+    match command {
+        Help::Default => {
+            println!("{}", usage);
+            println!("COMMANDS:");
+            println!("{}", help);
+            println!("{}", version);
+            println!("{}", new);
+        },
+        Help::New => {
+            println!("{}", new);
+        },
+    }
+
 }
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
+    let mut themes: Vec<Theme> = vec![];
+    let mut selected_theme = 0;
 
     if args.len() <= 1 {
         println!("Error: no arguments provided.");
-        print_help();
-    } else {
+        print_help(Help::Default);
+        return;
+    }
+    else {
         match args[1].as_str() {
-            "help" | "-h" | "--help" => print_help(),
-            "version" | "-v" | "--version" | "-V" => {
+            "help" | "h" => print_help(Help::Default),
+            "version" | "v" => {
                 println!("ricem version {} running on {} GNU/Linux.", VERSION, detect_distro())
+            },
+            "new" | "n" => {
+                if args.len() < 3 {
+                    println!("Error: need to provide a name for the new theme");
+                    print_help(Help::New);
+                    return;
+
+                }
+
+                themes.push(Theme::new(&args[2]));
+                if selected_theme > 0 {
+                    selected_theme += 1;
+                }
+
+                match std::fs::create_dir(themes[selected_theme].name) {
+                    Err(why) => println!("! {:?}", why.kind()),
+                    Ok(_) => {
+                        println!("Created new theme named '{}'.", args[2]);
+                    },
+                }
+                
+            },
+            "status" | "s" => {
+                println!("Currently selected theme is {}", themes[selected_theme].name);
             },
             _ => {}
         }
