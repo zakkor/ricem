@@ -1,3 +1,7 @@
+use std::fs::File;
+use std::io::*;
+
+
 const VERSION: f32 = 0.0;
 
 /// Returns a `str` containing the name of the Linux distribution the user is currently running.
@@ -35,18 +39,20 @@ struct Command {
 }
  */
 
+
 struct ConfigFile {
     name: String,
     path: String
 }
 
-struct Theme<'a> {
-    name: &'a String,
+
+struct Theme {
+    name: String,
     tracking: Vec<ConfigFile>,
 }
 
-impl<'a> Theme<'a> {
-    fn new(name: &'a String) -> Self {
+impl Theme {
+    fn new(name: String) -> Self {
         Theme {
             name: name,
             tracking: vec![]
@@ -81,8 +87,62 @@ fn print_help(command: Help) {
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
+
+    let mut ricem_dir = std::env::home_dir().unwrap();
+    ricem_dir.push(".ricem");
+    ricem_dir.as_path();
+
+    let conf_path = ricem_dir.join(".conf");
+    
+
+    match std::fs::read_dir(&ricem_dir) {
+        Err(_) => {
+            // if ricem dir is not found create it
+            std::fs::create_dir(&ricem_dir);
+        },
+        Ok(_) => {
+            
+        },
+    }
+
     let mut themes: Vec<Theme> = vec![];
-    let mut selected_theme = 0;
+    let mut selected_theme = String::new();
+    
+    // print the dirs in it
+    for maybe_path in std::fs::read_dir(&ricem_dir).unwrap() {
+        let path = maybe_path.unwrap();
+        
+        if path.path().is_dir() {
+            themes.push(Theme::new(path.file_name().into_string().unwrap()));
+            println!("> {:?}", path.path().display());
+        }
+    }
+
+    // try to find config file
+    match File::open(&conf_path) {
+        Ok(mut file) => {
+            // parse the configs and apply them
+            let mut conf_contents = String::new();
+            file.read_to_string(&mut conf_contents);
+            
+            let contents_vec: Vec<&str> = conf_contents.split('\n').collect();
+            for line in contents_vec {
+                let mut split_line = line.split_whitespace();
+                while let Some(word) = split_line.next() {                 
+                    if word == "selected" {
+                        selected_theme = split_line.next().unwrap().to_string();
+                        break;
+                    }
+                }
+            }
+        },
+        Err(_) => {
+            // create config file
+            let new_file = File::create(&conf_path).unwrap();
+        }
+    }
+
+
 
     if args.len() <= 1 {
         println!("Error: no arguments provided.");
@@ -102,25 +162,34 @@ fn main() {
                     return;
 
                 }
-
-                themes.push(Theme::new(&args[2]));
-                if selected_theme > 0 {
-                    selected_theme += 1;
-                }
-
-                match std::fs::create_dir(themes[selected_theme].name) {
+                
+                //&themes.iter().find(|&t| t.name == args[2]).unwrap().name
+                //
+                match std::fs::create_dir(ricem_dir.join(args[2].clone())) {
                     Err(why) => println!("! {:?}", why.kind()),
                     Ok(_) => {
                         println!("Created new theme named '{}'.", args[2]);
                     },
                 }
-                
+
+                themes.push(Theme::new(args[2].clone()));
+
+                selected_theme = args[2].clone();
+
+                let mut conf_file = std::fs::OpenOptions::new().write(true).open(conf_path).unwrap();
+                conf_file.set_len(0);
+                conf_file.write_all(("selected ".to_string() + &selected_theme).as_str().as_bytes());
+//                conf_file.sync_all();
+
             },
             "status" | "s" => {
-                println!("Currently selected theme is {}", themes[selected_theme].name);
+                if selected_theme.is_empty() {
+                    println!("No theme currently selected");
+                } else {
+                    println!("Currently selected theme is {}", selected_theme);
+                }
             },
             _ => {}
         }
     }
-
 }
