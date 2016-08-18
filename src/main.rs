@@ -42,12 +42,7 @@ fn detect_distro() -> &'static str {
     distro_name
 }
     
-enum Help {
-    Default,
-    New,
-    Select,
-    Track,
-}
+
 
 /*
 {
@@ -60,39 +55,60 @@ enum Help {
 */
 
 fn select_theme(name: String, themes: &Vec<Theme>, conf_path: &std::path::Path) -> Option<String> {
+    let mut data = String::new();
+
+    // open file for reading data into json object
+    {
+        let mut file = std::fs::OpenOptions::new().read(true).open(conf_path).unwrap();
+        file.read_to_string(&mut data);
+        // file goes out of scope
+    }
+
+    let mut obj = json::parse(&data).unwrap();
+
+    let mut return_val = None;
+
+    if name == "none" {
+        obj["selected"] = "none".into();
+        return_val = Some(name.to_string());
+    }
+
     match themes.iter().find(|&t| t.name == name) {
-        Some(_) => {
-            let mut data = String::new();
-
-            // open file for reading data into json object
-            {
-                let mut file = std::fs::OpenOptions::new().read(true).open(conf_path).unwrap();
-                file.read_to_string(&mut data);
-                // file goes out of scope
-            }
-
-            let mut obj = json::parse(&data).unwrap();
-            
+        Some(_) => {            
             // change selected theme in json obj
             obj["selected"] = name.clone().into();
             
-            //open file for writing data
-            {
-                let mut file = std::fs::OpenOptions::new().write(true).open(conf_path).unwrap();
-                file.set_len(0);
-                file.write_fmt(format_args!("{:#}", obj));
-                //file goes out of scope
-            }
-            
             println!("Selected theme '{}'.", name);
-            Some(name)
+            return_val = Some(name);
+            
         },
         None => {
-            println!("Error: theme '{}' does not exist.", name);
-            print_help(Help::Select);
-            None
+            if name != "none" {
+                println!("Error: theme '{}' does not exist.", name);
+                print_help(Help::Select);
+                return_val = None;
+            }
         }
     }
+
+    
+    //open file for writing data
+    if return_val != None {    
+        let mut file = std::fs::OpenOptions::new().write(true).open(conf_path).unwrap();
+        file.set_len(0);
+        file.write_fmt(format_args!("{:#}", obj));
+        //file goes out of scope
+    }
+
+    return_val
+}
+
+enum Help {
+    Default,
+    New,
+    Select,
+    Track,
+    Delete,
 }
 
 fn print_help(command: Help) {
@@ -102,6 +118,7 @@ fn print_help(command: Help) {
     let new = "\tnew, n   [theme_name]\n\t\tcreates a new empty theme named [theme_name]\n";
     let select = "\tselect, e   [theme_name]\n\t\tselects the theme named [theme_name]\n";
     let track = "\ttrack, t   [template1] [template2] ... [templateN]\n\t\tstarts tracking the template named [templateX]\n";
+    let delete = "\tdelete, del   [theme_name]\n\t\tdeletes the theme named [theme_name]\n";
     
     match command {
         Help::Default => {
@@ -111,6 +128,8 @@ fn print_help(command: Help) {
             println!("{}", version);
             println!("{}", new);
             println!("{}", select);
+            println!("{}", track);
+            println!("{}", delete);
         },
         Help::New => {
             println!("{}", new);
@@ -120,6 +139,9 @@ fn print_help(command: Help) {
         },
         Help::Track => {
             println!("{}", track);
+        },
+        Help::Delete => {
+            println!("{}", delete);
         },
     }
 
@@ -384,7 +406,53 @@ fn main() {
                     std::fs::copy(theme_path, track_buf).unwrap();
                 }
             },
-            _ => {}
+            "delete" | "del" => {
+                
+                if args.len() < 3 {
+                    println!("Error: need to provide theme to delete.");
+                    print_help(Help::Delete);
+                    return;
+                }
+                let mut data = String::new();
+
+                // open file for reading data into json object
+                {
+                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
+                    file.read_to_string(&mut data);
+                    // file goes out of scope
+                }
+
+                let mut obj = json::parse(&data).unwrap();
+
+                match themes.iter().find(|&t| t.name == args[2]) {
+                    Some(_) => {
+                        obj["themes"].remove(&args[2]);
+                    },
+                    None => {
+                        println!("Error: that theme does not exist.");
+                        print_help(Help::Delete);
+                        return;
+                    }
+                }
+
+                //open file for writing data
+                {
+                    let mut file = std::fs::OpenOptions::new().write(true).open(&conf_path).unwrap();
+                    file.set_len(0);
+                    file.write_fmt(format_args!("{:#}", obj));
+                    //file goes out of scope
+                }
+
+                // delete theme dir recursively
+                std::fs::remove_dir_all(ricem_dir.join(&args[2]));
+
+                // select none
+                select_theme("none".to_string(), &themes, &conf_path);
+            },
+            _ => {
+                println!("Error: Unknown command.");
+                print_help(Help::Default);
+            }
         }
     }
 }
