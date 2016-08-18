@@ -39,5 +39,11 @@ Anytime you wish to get your configs (or someone elses configs) from Github:
 
 This merges whatever themes are in that repo with your own, but it doesn't overwrite your themes in case they have the same name.
 
+## Installing
+- Grab `ricem` and `.conf` from [the release page](https://github.com/zakkor/ricem/releases/tag/v0.2-alpha).
+- Copy `ricem` to `/usr/local/bin` (or whatever place you want that's in your path).
+- Make a directory called `.ricem` in your home. (`mkdir ~/.ricem`)
+- Copy `.conf` to `~/.ricem` (`cp .conf ~/.ricem`)
+
 ## Things that are not implemented yet
 Very few file templates are currently available. <b>(in progress)</b>
