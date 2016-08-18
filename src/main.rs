@@ -407,7 +407,6 @@ fn main() {
                 }
             },
             "delete" | "del" => {
-                
                 if args.len() < 3 {
                     println!("Error: need to provide theme to delete.");
                     print_help(Help::Delete);
@@ -448,6 +447,71 @@ fn main() {
 
                 // select none
                 select_theme("none".to_string(), &themes, &conf_path);
+            },
+            "download" | "dl" => {
+                if args.len() < 3 {
+                    println!("Error: need to provide a link to the github repository you wish to merge.");
+                    print_help(Help::Delete);
+                    return;
+                }
+                
+                let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp && mv -v ~/.ricem/temp/* ~/.ricem/";
+                
+                let shell_cmd = std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(clone_cmd)
+                    .output()
+                    .expect("failed to execute process");
+                
+
+                // merge temp/.conf with ~/.ricem/.conf
+
+                let mut data = String::new();
+                let mut temp_conf_path = ricem_dir.join("temp").join(".conf");
+
+                // open file for reading data into json object
+                {
+                    let mut file = std::fs::OpenOptions::new().read(true).open(&temp_conf_path).unwrap();
+                    file.read_to_string(&mut data);
+                    // file goes out of scope
+                }
+
+                let mut obj = json::parse(&data).unwrap();
+                let mut new_obj = object!{};
+
+                for (key, val) in obj["themes"].entries() {
+                    new_obj[key] = val.clone();
+                }
+
+                data.clear();
+
+                // open file for reading data into json object
+                {
+                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
+                    file.read_to_string(&mut data);
+                    // file goes out of scope
+                }
+                let mut obj = json::parse(&data).unwrap();
+
+                for (key, val) in new_obj.entries() {
+                    if obj["themes"][key].is_null() {
+                        obj["themes"][key] = val.clone();
+                    }
+                }
+
+                //open file for writing data
+                {
+                    let mut file = std::fs::OpenOptions::new().write(true).open(&conf_path).unwrap();
+                    file.set_len(0);
+                    file.write_fmt(format_args!("{:#}", obj));
+                    //file goes out of scope
+                }
+
+                let shell_cmd = std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg("rm -rf ~/.ricem/temp")
+                    .output()
+                    .expect("failed to execute process");
             },
             _ => {
                 println!("Error: Unknown command.");
