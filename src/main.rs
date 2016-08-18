@@ -193,7 +193,7 @@ fn main() {
                     Ok(path) => {
                         if path.path().is_dir() {
                             themes.push(Theme::new(path.file_name().into_string().unwrap()));
-                            println!("Loaded theme {:?}", path.file_name());
+//                            println!("Loaded theme {:?}", path.file_name());
                         }   
                     },
                     Err(_) => {
@@ -388,7 +388,7 @@ fn main() {
                     //println!("{}, {}", val[0], val[1]);
                     let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val[0].as_str().unwrap());
-                    println!("{:?}", theme_path);
+                    println!("Applied '{:?}'.", theme_path);
 
 
                     let mut track_buf = std::path::PathBuf::new();
@@ -454,6 +454,8 @@ fn main() {
                     print_help(Help::Delete);
                     return;
                 }
+
+                println!("Cloning repository...");
                 
                 let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp && mv -v ~/.ricem/temp/* ~/.ricem/";
                 
@@ -462,7 +464,7 @@ fn main() {
                     .arg(clone_cmd)
                     .output()
                     .expect("failed to execute process");
-                
+
 
                 // merge temp/.conf with ~/.ricem/.conf
 
@@ -512,6 +514,15 @@ fn main() {
                     .arg("rm -rf ~/.ricem/temp")
                     .output()
                     .expect("failed to execute process");
+
+                println!("Done!");
+            },
+            "upload" | "ul" => {
+                if args.len() < 3 {
+                    println!("Error: need to provide a link to the github repository you wish to merge.");
+                    print_help(Help::Delete);
+                    return;
+                }
             },
             _ => {
                 println!("Error: Unknown command.");
