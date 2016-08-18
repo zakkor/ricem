@@ -266,7 +266,7 @@ fn main() {
                     None => {}
                 }
             },
-            "status" | "s" => {
+            "status" => {
                 if selected_theme.is_empty() || selected_theme == "none" {
                     println!("No theme currently selected");
                 } else {
@@ -287,7 +287,7 @@ fn main() {
                     }
                 }
             },
-            "select" | "e" => {
+            "select" | "s" => {
                 if args.len() < 3 {
                     println!("Error: need to provide a name for which theme to select.");
                     print_help(Help::Select);
@@ -373,6 +373,13 @@ fn main() {
                 }
             },
             "apply" | "a" => {
+                let theme_to_apply =
+                    if args.len() < 3 {
+                        selected_theme.clone()
+                    } else {
+                        args[2].clone()
+                    };
+                
                 let mut data = String::new();
 
                 // open file for reading data into json object
@@ -384,9 +391,9 @@ fn main() {
 
                 let mut obj = json::parse(&data).unwrap();
 
-                for (key, val) in obj["themes"][&selected_theme].entries() {
+                for (key, val) in obj["themes"][&theme_to_apply].entries() {
                     //println!("{}, {}", val[0], val[1]);
-                    let mut theme_path = ricem_dir.join(&selected_theme);
+                    let mut theme_path = ricem_dir.join(&theme_to_apply);
                     theme_path.push(val[0].as_str().unwrap());
                     println!("Applied '{:?}'.", theme_path);
 
@@ -522,6 +529,12 @@ fn main() {
                     println!("Error: need to provide a link to the github repository you wish to merge.");
                     print_help(Help::Delete);
                     return;
+                }
+            },
+            "list" | "l" => {
+                println!("Themes:");
+                for t in themes {
+                    println!("\t{}", t.name);
                 }
             },
             _ => {
