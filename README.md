@@ -50,5 +50,16 @@ This merges whatever themes are in that repo with your own, but it doesn't overw
 - Make a directory called `.ricem` in your home. (`mkdir ~/.ricem`)
 - Copy `.conf` to `~/.ricem` (`cp .conf ~/.ricem`)
 
-## Things that are not implemented yet
-Very few file templates are currently available. <b>(in progress)</b>
+## Planned features
+- [x] Creating new themes
+- [x] Selecting themes
+- [x] File tracking from templates
+- [x] OS-specific templates
+- [x] Automatically detect GNU/Linux distro
+- [x] Syncing theme
+- [x] Applying theme
+- [x] File tracking from manual input
+- [ ] Applying only specific files
+- [ ] Syncing only specific files
+- [ ] Showing which files are applied / unapplied / modified since last application.
+- [ ] <b> MORE TEMPLATES! </b>
