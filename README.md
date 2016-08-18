@@ -9,7 +9,7 @@ It comes with a bunch of pre-made templates for every distro, so you don't need 
 ## Disclaimer
 This is pre-release software that was tested only by me. It may wipe your whole system or literally kill your cat.
 
-Look over the source code if you're unsure, and be careful.
+Look over the source code <b>(but beware, it's not very pretty)</b> if you're unsure, and be careful.
 
 ## Usage
 Create a new theme:
