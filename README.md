@@ -27,6 +27,10 @@ All done! Now any time you want to reapply this theme, (let's say you messed up 
 
 This copies the files you `ricem sync`ed into their original paths.
 
+Note that in some cases (for example `/etc/i3status.conf`) you need to provide root to be able to apply stuff.
+
+`sudo ricem apply my-theme`
+
 You can also upload your `~/.ricem/` directory (which contains the config files and metadata) to Github.
 
 Anytime you wish to get your configs (or someone elses configs) from Github:
