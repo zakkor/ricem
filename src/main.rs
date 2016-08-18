@@ -9,7 +9,7 @@ use std::io::*;
 use std::collections::HashMap;
 
 
-const VERSION: f32 = 0.1;
+const VERSION: f32 = 0.2;
 
 mod theme;
 use theme::*;
