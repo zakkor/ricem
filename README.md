@@ -6,6 +6,11 @@ It manages your dotfiles, wherever they are.
 
 It comes with a bunch of pre-made templates for every distro, so you don't need to specify the path to a config file manually. (But you can do that if you have a file that isn't in a template).
 
+## Disclaimer
+This is pre-release software that was tested only by me. It may wipe your whole system or literally kill your cat.
+
+Look over the source code if you're unsure, and be careful.
+
 ## Usage
 Create a new theme:
 
