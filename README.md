@@ -44,6 +44,10 @@ Anytime you wish to get your configs (or someone elses configs) from Github:
 
 This merges whatever themes are in that repo with your own, but it doesn't overwrite your themes in case they have the same name.
 
+Try it with mine: `ricem dl https://github.com/zakkor/ricem-themes`
+
+It only contains two themes that contain an .Xresources each.
+
 ## Installing
 - Grab `ricem` and `.conf` from [the release page](https://github.com/zakkor/ricem/releases/tag/v0.2-alpha).
 - Copy `ricem` to `/usr/local/bin` (or whatever place you want that's in your path).
