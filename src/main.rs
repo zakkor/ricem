@@ -417,6 +417,8 @@ fn main() {
                             .replace("~", std::env::home_dir().unwrap().to_str().unwrap());
                         
                         track_buf = std::path::PathBuf::from(track_string).join(val[0].as_str().unwrap());
+                    } else {
+                        track_buf = std::path::PathBuf::from(val[1].as_str().unwrap()).join(val[0].as_str().unwrap());
                     }
 
                     std::fs::copy(theme_path, track_buf).unwrap();
