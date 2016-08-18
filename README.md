@@ -15,11 +15,13 @@ Specify some files to track:
 
 `ricem track i3 .Xresources emacs ~/Pictures/wp.png`
 
+In this case, the i3 template will track `config` in `~/.i3/`, the emacs template will track `init.el` in `~/.emacs.d/`, and so on.
+
 To copy the tracked files into your theme folder:
 
 `ricem sync`
 
-All done! Now any time you want to reapply this theme, (let's say you messed up your `~/.i3/config`), it's as simple as:
+All done! Now any time you want to reapply this theme, (let's say you messed up your `~/.i3/config`, or you want to switch between themes), it's as simple as:
 
 `ricem apply my-theme`
 
@@ -32,3 +34,6 @@ Anytime you wish to get your configs (or someone elses configs) from Github:
 `ricem download https://github.com/username/ricem_repo`
 
 This merges whatever themes are in that repo with your own, but it doesn't overwrite your themes in case they have the same name.
+
+## Things that are not implemented yet
+Very few file templates are currently available. <b>(in progress)</b>
