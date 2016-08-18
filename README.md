@@ -1,5 +1,8 @@
 # ricem
-A lightweight, automatic dotfile manager
+A lightweight, automatic dotfile manager.
+
+Here it is in action: [video link](https://u.teknik.io/4tcfD.ogv)
+
 
 ## What it does
 It manages your dotfiles, wherever they are.
