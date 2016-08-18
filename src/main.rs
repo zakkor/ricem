@@ -319,10 +319,18 @@ fn main() {
                             }
 
                             let mut obj = json::parse(&data).unwrap();
-                            
-                            let file = obj["templates"][&args[i]][detect_distro()][0].clone();
-                            let location = obj["templates"][&args[i]][detect_distro()][1].clone();
 
+                            let mut file;
+                            let mut location;
+
+                            if !obj["templates"][&args[i]].is_null() {
+                                file = obj["templates"][&args[i]][detect_distro()][0].clone();
+                                location = obj["templates"][&args[i]][detect_distro()][1].clone();    
+                            } else {
+                                file = std::path::Path::new(&args[i]).file_name().unwrap().to_str().unwrap().into();
+                                location = (String::from(std::path::Path::new(&args[i]).parent().unwrap().to_str().unwrap()) + "/").into();
+                            }
+                            
                             obj["themes"][&selected_theme][&args[i]][0] = file;
                             obj["themes"][&selected_theme][&args[i]][1] = location;
 
@@ -365,8 +373,9 @@ fn main() {
                             .unwrap()
                             .to_string()
                             .replace("~", std::env::home_dir().unwrap().to_str().unwrap());
-                        
                         track_buf = std::path::PathBuf::from(track_string).join(val[0].as_str().unwrap());
+                    } else {
+                        track_buf = std::path::PathBuf::from(val[1].as_str().unwrap()).join(val[0].as_str().unwrap());
                     }
 
                     std::fs::copy(track_buf, theme_path).unwrap();
