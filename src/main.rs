@@ -9,7 +9,7 @@ use std::io::*;
 use std::collections::HashMap;
 
 
-const VERSION: f32 = 0.0;
+const VERSION: f32 = 0.1;
 
 mod theme;
 use theme::*;
@@ -248,7 +248,21 @@ fn main() {
                 if selected_theme.is_empty() || selected_theme == "none" {
                     println!("No theme currently selected");
                 } else {
-                    println!("Currently selected theme is {}", selected_theme);
+                    println!("Currently selected theme is '{}'", selected_theme);
+                    let mut data = String::new();
+
+                    // open file for reading data into json object
+                    {
+                        let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
+                        file.read_to_string(&mut data);
+                        // file goes out of scope
+                    }
+
+                    let mut obj = json::parse(&data).unwrap();
+                    println!("Current theme is tracking the following files:");
+                    for (key, val) in obj["themes"][&selected_theme].entries() {
+                        println!("\ttemplate '{}' with file '{}' located in '{}'", key, val[0], val[1]);
+                    }
                 }
             },
             "select" | "e" => {
@@ -270,14 +284,104 @@ fn main() {
                     return;
                 }
 
-                for i in (2..args.len()).step_by(2) {
+                for i in 2..args.len() {
                     match themes.iter_mut().find(|ref t| t.name == selected_theme) {
                         Some(theme) => {
-                            println!("tracking file {} located in {}.", args[i], args[i+1]);
-                            theme.tracking.push(ConfigFile::new(args[i].clone(), args[i+1].clone()));
+                            let mut data = String::new();
+
+                            // open file for reading data into json object
+                            {
+                                let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
+                                file.read_to_string(&mut data);
+                                // file goes out of scope
+                            }
+
+                            let mut obj = json::parse(&data).unwrap();
+                            
+                            let file = obj["templates"][&args[i]][detect_distro()][0].clone();
+                            let location = obj["templates"][&args[i]][detect_distro()][1].clone();
+
+                            obj["themes"][&selected_theme][&args[i]][0] = file;
+                            obj["themes"][&selected_theme][&args[i]][1] = location;
+
+                            //open file for writing data
+                            {
+                                let mut file = std::fs::OpenOptions::new().write(true).open(&conf_path).unwrap();
+                                file.set_len(0);
+                                file.write_fmt(format_args!("{:#}", obj));
+                                //file goes out of scope
+                            }
                         },
                         None => {}
                     }
+                }
+            },
+            "sync" | "y" => {
+                let mut data = String::new();
+
+                // open file for reading data into json object
+                {
+                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
+                    file.read_to_string(&mut data);
+                    // file goes out of scope
+                }
+
+                let mut obj = json::parse(&data).unwrap();
+
+                for (key, val) in obj["themes"][&selected_theme].entries() {
+                    //println!("{}, {}", val[0], val[1]);
+                    let mut theme_path = ricem_dir.join(&selected_theme);
+                    theme_path.push(val[0].as_str().unwrap());
+                    println!("{:?}", theme_path);
+
+
+                    let mut track_buf = std::path::PathBuf::new();
+                    
+                    if val[1].as_str().unwrap().chars().nth(0).unwrap() == '~' {
+                        let track_string = val[1].as_str()
+                            .clone()
+                            .unwrap()
+                            .to_string()
+                            .replace("~", std::env::home_dir().unwrap().to_str().unwrap());
+                        
+                        track_buf = std::path::PathBuf::from(track_string).join(val[0].as_str().unwrap());
+                    }
+
+                    std::fs::copy(track_buf, theme_path).unwrap();
+                }
+            },
+            "apply" | "a" => {
+                let mut data = String::new();
+
+                // open file for reading data into json object
+                {
+                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
+                    file.read_to_string(&mut data);
+                    // file goes out of scope
+                }
+
+                let mut obj = json::parse(&data).unwrap();
+
+                for (key, val) in obj["themes"][&selected_theme].entries() {
+                    //println!("{}, {}", val[0], val[1]);
+                    let mut theme_path = ricem_dir.join(&selected_theme);
+                    theme_path.push(val[0].as_str().unwrap());
+                    println!("{:?}", theme_path);
+
+
+                    let mut track_buf = std::path::PathBuf::new();
+                    
+                    if val[1].as_str().unwrap().chars().nth(0).unwrap() == '~' {
+                        let track_string = val[1].as_str()
+                            .clone()
+                            .unwrap()
+                            .to_string()
+                            .replace("~", std::env::home_dir().unwrap().to_str().unwrap());
+                        
+                        track_buf = std::path::PathBuf::from(track_string).join(val[0].as_str().unwrap());
+                    }
+
+                    std::fs::copy(theme_path, track_buf).unwrap();
                 }
             },
             _ => {}
