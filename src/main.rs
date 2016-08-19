@@ -1,70 +1,38 @@
-#![feature(question_mark)]
-#![feature(step_by)]
-#[macro_use]
-
-extern crate json;
-
-use std::fs::File;
-use std::io::*;
-use std::collections::HashMap;
-
-
-const VERSION: f32 = 0.2;
+#[macro_use] extern crate json;
+#[macro_use] extern crate maplit;
 
 mod theme;
 use theme::*;
 
-/// Returns a `str` containing the name of the Linux distribution the user is currently running.
-/// Panics if it can't detect succesfully.
-fn detect_distro() -> &'static str {
-    let shell_command = std::process::Command::new("sh")
-        .arg("-c")
-        .arg("cat /etc/*-release")
-        .output()
-        .expect("failed to execute process");    
+mod jsonutil;
+use jsonutil::JsonUtil;
 
-    let release_info = String::from_utf8_lossy(&shell_command.stdout);
+mod help;
+use help::*;
 
-    let linux_distros = vec!["Arch", "Ubuntu", "Debian", "OpenSUSE", "Fedora", "Gentoo", "Kubuntu", "Lubuntu"];
+mod util;
+use util::*;
 
-    let mut distro_name = "NULL";
-    
-    for name in linux_distros {
-        if release_info.contains(name) {
-            distro_name = name; 
-        }
-    }
+use std::fs::File;
+use std::io::*;
 
-    if distro_name == "NULL" {
-        panic!("Could not detect your OS");
-    }
-    
-    distro_name
-}
 
-fn select_theme(name: String, themes: &Vec<Theme>, conf_path: &std::path::Path) -> Option<String> {
-    let mut data = String::new();
+const VERSION: f32 = 0.2;
 
-    // open file for reading data into json object
-    {
-        let mut file = std::fs::OpenOptions::new().read(true).open(conf_path).unwrap();
-        file.read_to_string(&mut data);
-        // file goes out of scope
-    }
-
-    let mut obj = json::parse(&data).unwrap();
+fn select_theme(name: String, themes: &Vec<Theme>, json_util: &JsonUtil) -> Option<String> {
+    let mut json_obj = json_util.read();
 
     let mut return_val = None;
 
     if name == "none" {
-        obj["selected"] = "none".into();
+        json_obj["selected"] = "none".into();
         return_val = Some(name.to_string());
     }
 
     match themes.iter().find(|&t| t.name == name) {
         Some(_) => {            
             // change selected theme in json obj
-            obj["selected"] = name.clone().into();
+            json_obj["selected"] = name.clone().into();
             
             println!("Selected theme '{}'.", name);
             return_val = Some(name);
@@ -78,88 +46,17 @@ fn select_theme(name: String, themes: &Vec<Theme>, conf_path: &std::path::Path) 
             }
         }
     }
-
-    
-    //open file for writing data
-    if return_val != None {    
-        let mut file = std::fs::OpenOptions::new().write(true).open(conf_path).unwrap();
-        file.set_len(0);
-        file.write_fmt(format_args!("{:#}", obj));
-        //file goes out of scope
+   
+    if return_val != None {
+        json_util.write(&json_obj);
     }
 
     return_val
 }
 
-enum Help {
-    Default,
-    New,
-    Select,
-    Track,
-    Delete,
-}
 
-fn print_help(command: Help) {
-    let usage = "USAGE:\n\tricem <command> [command-specific-args]\n";
-    let help = "\thelp, h\n\t\tprints this help message\n";
-    let version = "\tversion, v\n\t\tprints program version\n";
-    let new = "\tnew, n   [theme_name]\n\t\tcreates a new empty theme named [theme_name]\n";
-    let select = "\tselect, e   [theme_name]\n\t\tselects the theme named [theme_name]\n";
-    let track = "\ttrack, t   [template1] [template2] ... [templateN]\n\t\tstarts tracking the template named [templateX]\n";
-    let delete = "\tdelete, del   [theme_name]\n\t\tdeletes the theme named [theme_name]\n";
-    
-    match command {
-        Help::Default => {
-            println!("{}", usage);
-            println!("COMMANDS:");
-            println!("{}", help);
-            println!("{}", version);
-            println!("{}", new);
-            println!("{}", select);
-            println!("{}", track);
-            println!("{}", delete);
-        },
-        Help::New => {
-            println!("{}", new);
-        },
-        Help::Select => {
-            println!("{}", select);
-        },
-        Help::Track => {
-            println!("{}", track);
-        },
-        Help::Delete => {
-            println!("{}", delete);
-        },
-    }
 
-}
 
-/*
-fn load_templates(conf_path: &std::path::Path) -> HashMap<String, HashMap<String, String>> {
-    let mut file = File::open(conf_path).unwrap();
-    
-    let mut data = String::new();
-    file.read_to_string(&mut data);
-    
-    let mut obj = json::parse(&data).unwrap();
-    obj["selected"] = "darky".into();
-    println!("{}", obj["selected"]);
-
-    let mut templates = HashMap::new();    
-    
-    templates
-}
- */
-use std::process::{Output, Command};
-
-fn exec_shell(arg: &str) -> Output {
-    Command::new("sh")
-        .arg("-c")
-        .arg(arg)
-        .output()
-        .expect("failed to execute process")
-}
 
 fn main() {
     let mut themes: Vec<Theme> = vec![];
@@ -172,6 +69,8 @@ fn main() {
 
 
     let conf_path = ricem_dir.join(".conf");
+
+    let json_util = JsonUtil::new(&conf_path);
 
     match std::fs::read_dir(&ricem_dir) {
         Err(_) => {
@@ -259,7 +158,7 @@ fn main() {
 
                 themes.push(Theme::new(args[2].clone()));
 
-                match select_theme(args[2].clone(), &themes, &conf_path) {
+                match select_theme(args[2].clone(), &themes, &json_util) {
                     Some(name) => selected_theme = name,
                     None => {}
                 }
@@ -292,7 +191,7 @@ fn main() {
                     return;
                 }
 
-                match select_theme(args[2].clone(), &themes, &conf_path) {
+                match select_theme(args[2].clone(), &themes, &json_util) {
                     Some(name) => selected_theme = name,
                     None => {}
                 }
@@ -469,7 +368,7 @@ fn main() {
                 std::fs::remove_dir_all(ricem_dir.join(&args[2]));
 
                 // select none
-                select_theme("none".to_string(), &themes, &conf_path);
+                select_theme("none".to_string(), &themes, &json_util);
             },
             "download" | "dl" => {
                 if args.len() < 3 {

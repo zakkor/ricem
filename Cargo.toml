@@ -5,3 +5,4 @@ authors = ["ed <edward.partenie@gmail.com>"]
 
 [dependencies]
 json = "*"
+maplit = "0.1.3"
