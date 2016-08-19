@@ -25,7 +25,6 @@ pub fn detect_distro() -> &'static str {
     distro_name
 }
 
-
 pub fn exec_shell(arg: &str) -> Output {
     Command::new("sh")
         .arg("-c")

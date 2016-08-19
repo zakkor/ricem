@@ -15,6 +15,8 @@ use util::*;
 
 use std::fs::File;
 use std::io::*;
+use json::JsonValue;
+use std::path::{Path, PathBuf};
 
 
 const VERSION: f32 = 0.2;
@@ -85,7 +87,6 @@ fn main() {
                         // ignore folder named '.git'
                         if path.path().is_dir() && path.file_name() != std::path::Path::new(".git") {
                             themes.push(Theme::new(path.file_name().into_string().unwrap()));
-                            //                            println!("Loaded theme {:?}", path.file_name());
                         }
                     },
                     Err(_) => {
@@ -168,18 +169,10 @@ fn main() {
                     println!("No theme currently selected");
                 } else {
                     println!("Currently selected theme is '{}'", selected_theme);
-                    let mut data = String::new();
-
-                    // open file for reading data into json object
-                    {
-                        let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
-                        file.read_to_string(&mut data);
-                        // file goes out of scope
-                    }
-
-                    let mut obj = json::parse(&data).unwrap();
+                    let json_obj = json_util.read();
+                    
                     println!("Current theme is tracking the following files:");
-                    for (key, val) in obj["themes"][&selected_theme].entries() {
+                    for (key, val) in json_obj["themes"][&selected_theme].entries() {
                         println!("\ttemplate '{}' with file '{}' located in '{}'", key, val[0], val[1]);
                     }
                 }
@@ -191,9 +184,8 @@ fn main() {
                     return;
                 }
 
-                match select_theme(args[2].clone(), &themes, &json_util) {
-                    Some(name) => selected_theme = name,
-                    None => {}
+                if let Some(name) = select_theme(args[2].clone(), &themes, &json_util) {
+                    selected_theme = name;
                 }
             },
             "track" | "t" => {
@@ -206,38 +198,35 @@ fn main() {
                 for i in 2..args.len() {
                     match themes.iter_mut().find(|ref t| t.name == selected_theme) {
                         Some(theme) => {
-                            let mut data = String::new();
-
-                            // open file for reading data into json object
-                            {
-                                let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
-                                file.read_to_string(&mut data);
-                                // file goes out of scope
-                            }
-
-                            let mut obj = json::parse(&data).unwrap();
-
-                            let mut file;
-                            let mut location;
-
-                            if !obj["templates"][&args[i]].is_null() {
-                                file = obj["templates"][&args[i]][detect_distro()][0].clone();
-                                location = obj["templates"][&args[i]][detect_distro()][1].clone();    
-                            } else {
-                                file = std::path::Path::new(&args[i]).file_name().unwrap().to_str().unwrap().into();
-                                location = (String::from(std::path::Path::new(&args[i]).parent().unwrap().to_str().unwrap()) + "/").into();
-                            }
+                            let mut json_obj = json_util.read();
                             
-                            obj["themes"][&selected_theme][&args[i]][0] = file;
-                            obj["themes"][&selected_theme][&args[i]][1] = location;
+                            let template = json_obj["templates"][&args[i]].clone();
 
-                            //open file for writing data
-                            {
-                                let mut file = std::fs::OpenOptions::new().write(true).open(&conf_path).unwrap();
-                                file.set_len(0);
-                                file.write_fmt(format_args!("{:#}", obj));
-                                //file goes out of scope
-                            }
+                            let (file, location) = 
+                                if !template.is_null() {
+                                    let dist = detect_distro();
+                                    (template[dist][0].clone(), template[dist][1].clone())
+                                }
+                            else {
+                                (Path::new(&args[i])
+                                 .file_name()
+                                 .unwrap()
+                                 .to_str()
+                                 .unwrap()
+                                 .into()
+                                 ,
+                                 (String::from(
+                                     Path::new(&args[i])
+                                         .parent()
+                                         .unwrap()
+                                         .to_str()
+                                         .unwrap()) + "/").into())
+                            };
+                            
+                            json_obj["themes"][&selected_theme][&args[i]][0] = file;
+                            json_obj["themes"][&selected_theme][&args[i]][1] = location;
+
+                            json_util.write(&json_obj);
                         },
                         None => {}
                     }
@@ -248,36 +237,14 @@ fn main() {
                 exec_shell(&(String::from("cd ~/.ricem && git add . && git commit -m \"Files from before syncing theme named '")
                            + &selected_theme + "'\""));
                 
-                let mut data = String::new();
+                let mut json_obj = json_util.read();
 
-                // open file for reading data into json object
-                {
-                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
-                    file.read_to_string(&mut data);
-                    // file goes out of scope
-                }
-
-                let mut obj = json::parse(&data).unwrap();
-
-                for (key, val) in obj["themes"][&selected_theme].entries() {
-                    //println!("{}, {}", val[0], val[1]);
+                for (key, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val[0].as_str().unwrap());
-                    println!("{:?}", theme_path);
+                    println!("Synced {:?}", theme_path);
 
-
-                    let mut track_buf = std::path::PathBuf::new();
-                    
-                    if val[1].as_str().unwrap().chars().nth(0).unwrap() == '~' {
-                        let track_string = val[1].as_str()
-                            .clone()
-                            .unwrap()
-                            .to_string()
-                            .replace("~", std::env::home_dir().unwrap().to_str().unwrap());
-                        track_buf = std::path::PathBuf::from(track_string).join(val[0].as_str().unwrap());
-                    } else {
-                        track_buf = std::path::PathBuf::from(val[1].as_str().unwrap()).join(val[0].as_str().unwrap());
-                    }
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
 
                     std::fs::copy(track_buf, theme_path).unwrap();
                 }
@@ -287,43 +254,21 @@ fn main() {
                            + &selected_theme + "'\""));
             },
             "apply" | "a" => {
-                let theme_to_apply =
-                    if args.len() < 3 {
-                        selected_theme.clone()
-                    } else {
+                let selected_theme =
+                    if args.len() >= 3 {
                         args[2].clone()
+                    } else {
+                        selected_theme
                     };
                 
-                let mut data = String::new();
+                let mut json_obj = json_util.read();
 
-                // open file for reading data into json object
-                {
-                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
-                    file.read_to_string(&mut data);
-                    // file goes out of scope
-                }
-
-                let mut obj = json::parse(&data).unwrap();
-
-                for (key, val) in obj["themes"][&theme_to_apply].entries() {
-                    let mut theme_path = ricem_dir.join(&theme_to_apply);
+                for (key, val) in json_obj["themes"][&selected_theme].entries() {
+                    let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val[0].as_str().unwrap());
                     println!("Applied '{:?}'.", theme_path);
 
-
-                    let mut track_buf = std::path::PathBuf::new();
-                    
-                    if val[1].as_str().unwrap().chars().nth(0).unwrap() == '~' {
-                        let track_string = val[1].as_str()
-                            .clone()
-                            .unwrap()
-                            .to_string()
-                            .replace("~", std::env::home_dir().unwrap().to_str().unwrap());
-                        
-                        track_buf = std::path::PathBuf::from(track_string).join(val[0].as_str().unwrap());
-                    } else {
-                        track_buf = std::path::PathBuf::from(val[1].as_str().unwrap()).join(val[0].as_str().unwrap());
-                    }
+                    let mut track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
 
                     std::fs::copy(theme_path, track_buf).unwrap();
                 }
@@ -334,20 +279,12 @@ fn main() {
                     print_help(Help::Delete);
                     return;
                 }
-                let mut data = String::new();
-
-                // open file for reading data into json object
-                {
-                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
-                    file.read_to_string(&mut data);
-                    // file goes out of scope
-                }
-
-                let mut obj = json::parse(&data).unwrap();
-
+                
+                let mut json_obj = json_util.read();
+                
                 match themes.iter().find(|&t| t.name == args[2]) {
                     Some(_) => {
-                        obj["themes"].remove(&args[2]);
+                        json_obj["themes"].remove(&args[2]);
                     },
                     None => {
                         println!("Error: that theme does not exist.");
@@ -356,14 +293,8 @@ fn main() {
                     }
                 }
 
-                //open file for writing data
-                {
-                    let mut file = std::fs::OpenOptions::new().write(true).open(&conf_path).unwrap();
-                    file.set_len(0);
-                    file.write_fmt(format_args!("{:#}", obj));
-                    //file goes out of scope
-                }
-
+                json_util.write(&json_obj);
+                
                 // delete theme dir recursively
                 std::fs::remove_dir_all(ricem_dir.join(&args[2]));
 
@@ -383,46 +314,27 @@ fn main() {
                 
 
                 // merge temp/.conf with ~/.ricem/.conf
-                let mut data = String::new();
                 let mut temp_conf_path = ricem_dir.join("temp").join(".conf");
 
-                // open file for reading data into json object
-                {
-                    let mut file = std::fs::OpenOptions::new().read(true).open(&temp_conf_path).unwrap();
-                    file.read_to_string(&mut data);
-                    // file goes out of scope
-                }
-
-                let mut obj = json::parse(&data).unwrap();
+                let temp_json_obj = JsonUtil::new(&temp_conf_path).read();
+                
                 let mut new_obj = object!{};
 
-                for (key, val) in obj["themes"].entries() {
+                // copy stuff from temp/.conf to a new empty object
+                for (key, val) in temp_json_obj["themes"].entries() {
                     new_obj[key] = val.clone();
                 }
 
-                data.clear();
+                let mut json_obj = json_util.read();
 
-                // open file for reading data into json object
-                {
-                    let mut file = std::fs::OpenOptions::new().read(true).open(&conf_path).unwrap();
-                    file.read_to_string(&mut data);
-                    // file goes out of scope
-                }
-                let mut obj = json::parse(&data).unwrap();
-
+                // add themes from the new object that we read from temp/.conf to our json_obj
                 for (key, val) in new_obj.entries() {
-                    if obj["themes"][key].is_null() {
-                        obj["themes"][key] = val.clone();
+                    if json_obj["themes"][key].is_null() {
+                        json_obj["themes"][key] = val.clone();
                     }
                 }
 
-                //open file for writing data
-                {
-                    let mut file = std::fs::OpenOptions::new().write(true).open(&conf_path).unwrap();
-                    file.set_len(0);
-                    file.write_fmt(format_args!("{:#}", obj));
-                    //file goes out of scope
-                }
+                json_util.write(&json_obj);
 
                 // remove temp dir
                 exec_shell("rm -rf ~/.ricem/temp");
