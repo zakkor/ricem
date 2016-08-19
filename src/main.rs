@@ -342,23 +342,36 @@ fn main() {
                 println!("Done!");
             },
             "upload" | "ul" => {
-                // this means we specify a new remote repo
-                if args.len() == 3 {
-                    let replace_origin_cmd = String::from("cd ~/.ricem && git remote remove origin && git remote add origin ")
+                println!("Uploading repo to github...");
+                if exec_shell("cd ~/.ricem && git remote get-url origin").status.success() {
+                    // this means we specify a new remote repo
+                    if args.len() == 3 {
+                        // if we already have a remote then replace it
+                        let replace_origin_cmd = String::from("cd ~/.ricem && git remote remove origin && git remote add origin ")
+                            + &args[2]
+                            + " && git push -u origin master";
+                        
+                        exec_shell(&replace_origin_cmd);
+                    }
+                    // just push
+                    else {
+                        exec_shell("cd ~/.ricem && git push");
+                    }
+                    println!("Done!");
+                }
+                else if args.len() < 3 {
+                    println!("Error: You need to specify a remote git url");
+                }
+                else {
+                    let add_origin_cmd = String::from("cd ~/.ricem && git remote add origin ")
                         + &args[2]
                         + " && git push -u origin master";
                     
-                    exec_shell(&replace_origin_cmd);
+                    exec_shell(&add_origin_cmd);
+                    println!("Done!");
                 }
-                else {
-                    // if we already have a remote then just git push
-                    if exec_shell("cd ~/.ricem && git remote get-url origin").status.success() {
-                        exec_shell("cd ~/.ricem && git push");
-                    }
-                    else {
-                        println!("Error: You need to specify a remote git url");
-                    }
-                }
+
+
             },
             "list" | "l" => {
                 println!("Themes:");
