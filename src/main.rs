@@ -150,7 +150,16 @@ fn load_templates(conf_path: &std::path::Path) -> HashMap<String, HashMap<String
     
     templates
 }
-*/
+ */
+use std::process::{Output, Command};
+
+fn exec_shell(arg: &str) -> Output {
+    Command::new("sh")
+        .arg("-c")
+        .arg(arg)
+        .output()
+        .expect("failed to execute process")
+}
 
 fn main() {
     let mut themes: Vec<Theme> = vec![];
@@ -170,23 +179,6 @@ fn main() {
             std::fs::create_dir(&ricem_dir);
         },
         Ok(dir) => {
-            // check if there's a git repo, create it if not
-            let shell_cmd = std::process::Command::new("sh")
-                .arg("-c")
-                .arg("cd ~/.ricem && git status")
-                .status()
-                .expect("failed to execute process");
-            
-            if !shell_cmd.success() {
-                println!("Creating empty git repository in ~/.ricem");
-                let shell_cmd = std::process::Command::new("sh")
-                    .arg("-c")
-                    .current_dir(&ricem_dir)
-                    .arg("git init")
-                    .output()
-                    .expect("failed to execute process");
-            }
-            
             // add themes based on existing directory names
             for maybe_path in dir {
                 match maybe_path {
@@ -194,7 +186,7 @@ fn main() {
                         // ignore folder named '.git'
                         if path.path().is_dir() && path.file_name() != std::path::Path::new(".git") {
                             themes.push(Theme::new(path.file_name().into_string().unwrap()));
-//                            println!("Loaded theme {:?}", path.file_name());
+                            //                            println!("Loaded theme {:?}", path.file_name());
                         }
                     },
                     Err(_) => {
@@ -206,6 +198,11 @@ fn main() {
         },
     }
 
+    // check if there's a git repo, create it if not
+    if !exec_shell("cd ~/.ricem && git status").status.success() {
+        println!("Creating empty git repository in ~/.ricem");
+        exec_shell("cd ~/.ricem && git init");
+    }
 
     // try to find config file
     match File::open(&conf_path) {
@@ -349,11 +346,8 @@ fn main() {
             },
             "sync" | "y" => {
                 // do a git commit with the pre-replace files
-                let shell_cmd = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(String::from("cd ~/.ricem && git add . && git commit -m \"commited files from before syncing theme named '") + &selected_theme + "'\"")
-                    .output()
-                    .expect("failed to execute process");
+                exec_shell(&(String::from("cd ~/.ricem && git add . && git commit -m \"Files from before syncing theme named '")
+                           + &selected_theme + "'\""));
                 
                 let mut data = String::new();
 
@@ -389,11 +383,9 @@ fn main() {
                     std::fs::copy(track_buf, theme_path).unwrap();
                 }
 
-                let shell_cmd = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(String::from("cd ~/.ricem && git add . && git commit -m \"commited files that are in theme named '") + &selected_theme + "'\"")
-                    .output()
-                    .expect("failed to execute process");
+                // do a git commit with the post-replace files
+                exec_shell(&(String::from("cd ~/.ricem && git add . && git commit -m \"Files that are in theme named '")
+                           + &selected_theme + "'\""));
             },
             "apply" | "a" => {
                 let theme_to_apply =
@@ -415,7 +407,6 @@ fn main() {
                 let mut obj = json::parse(&data).unwrap();
 
                 for (key, val) in obj["themes"][&theme_to_apply].entries() {
-                    //println!("{}, {}", val[0], val[1]);
                     let mut theme_path = ricem_dir.join(&theme_to_apply);
                     theme_path.push(val[0].as_str().unwrap());
                     println!("Applied '{:?}'.", theme_path);
@@ -488,18 +479,11 @@ fn main() {
                 }
 
                 println!("Cloning repository...");
-                
                 let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp && mv -v ~/.ricem/temp/* ~/.ricem/";
+                exec_shell(&clone_cmd);
                 
-                let shell_cmd = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(clone_cmd)
-                    .output()
-                    .expect("failed to execute process");
-
 
                 // merge temp/.conf with ~/.ricem/.conf
-
                 let mut data = String::new();
                 let mut temp_conf_path = ricem_dir.join("temp").join(".conf");
 
@@ -541,27 +525,29 @@ fn main() {
                     //file goes out of scope
                 }
 
-                let shell_cmd = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg("rm -rf ~/.ricem/temp")
-                    .output()
-                    .expect("failed to execute process");
+                // remove temp dir
+                exec_shell("rm -rf ~/.ricem/temp");
 
                 println!("Done!");
             },
             "upload" | "ul" => {
-                if args.len() < 3 {
-                    println!("Error: need to provide a link to the github repository you wish to upload to.");
-                    print_help(Help::Delete);
-                    return;
+                // this means we specify a new remote repo
+                if args.len() == 3 {
+                    let replace_origin_cmd = String::from("cd ~/.ricem && git remote remove origin && git remote add origin ")
+                        + &args[2]
+                        + " && git push -u origin master";
+                    
+                    exec_shell(&replace_origin_cmd);
                 }
-                //git@github.com:zakkor/ricem-themes.git
-                let shell_cmd = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(String::from("cd ~/.ricem && git remote add origin ") + &args[2] + " && git push -u origin master")
-                    .output()
-                    .expect("failed to execute process");
-                
+                else {
+                    // if we already have a remote then just git push
+                    if exec_shell("cd ~/.ricem && git remote get-url origin").status.success() {
+                        exec_shell("cd ~/.ricem && git push");
+                    }
+                    else {
+                        println!("Error: You need to specify a remote git url");
+                    }
+                }
             },
             "list" | "l" => {
                 println!("Themes:");
