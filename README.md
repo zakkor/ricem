@@ -15,21 +15,23 @@ This is pre-release software that was tested only by me. It may wipe your whole 
 Look over the source code if you're unsure, and be careful.
 
 ## Usage
-Create a new theme:
+- Create a new theme:
 
 `ricem new my-theme`
 
-Specify some files to track:
+- Specify some files to track:
 
 `ricem track i3 .Xresources emacs ~/Pictures/wp.png`
 
 In this case, the i3 template will track `config` in `~/.i3/`, the emacs template will track `init.el` in `~/.emacs.d/`, and so on.
 
-To copy the tracked files into your theme folder:
+- To copy the tracked files into your theme folder:
 
 `ricem sync`
 
-All done! Now any time you want to reapply this theme, (let's say you messed up your `~/.i3/config`, or you want to switch between themes), it's as simple as:
+All done!
+
+- Any time you want to reapply this theme, (let's say you messed up your `~/.i3/config`, or you want to switch between themes), it's as simple as:
 
 `ricem apply my-theme`
 
@@ -38,8 +40,6 @@ This copies the files you `ricem sync`ed into their original paths.
 Note that in some cases (for example `/etc/i3status.conf`) you need to provide root to be able to apply stuff.
 
 `sudo ricem apply my-theme`
-
-You can also upload your `~/.ricem/` directory (which contains the config files and metadata) to Github.
 
 Anytime you wish to get your configs (or someone elses configs) from Github:
 
@@ -50,6 +50,14 @@ This merges whatever themes are in that repo with your own, but it doesn't overw
 Try it with mine: `ricem dl https://github.com/zakkor/ricem-themes`
 
 It only contains two themes that contain an .Xresources each.
+
+- To upload your theme folder to a Github repository:
+
+`ricem upload git@github.com:username/repo`
+
+Please note that the Github url <b>needs</b> to be in SSH form (like above), and you <b>need</b> to have a SSH key registered to your PC active on your Github account.
+
+It will probably not upload if the repository has things that aren't in your theme folder. --- _maybe should add a `--force` flag for this?_
 
 ## Installing
 - Grab `ricem` and `.conf` from [the latest release](https://github.com/zakkor/ricem/releases).
