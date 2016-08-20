@@ -1,4 +1,4 @@
-# ricem
+# ricem [![Build Status](https://travis-ci.org/zakkor/ricem.svg?branch=master)](https://travis-ci.org/zakkor/ricem)
 A lightweight, automatic dotfile manager.
 
 Here it is in action: [video link](https://u.teknik.io/4tcfD.ogv)
