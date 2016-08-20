@@ -265,11 +265,19 @@ fn main() {
                 for (key, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val[0].as_str().unwrap());
-                    println!("Applied '{:?}'.", theme_path);
+                    
 
                     let mut track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
 
-                    std::fs::copy(theme_path, track_buf).unwrap();
+
+                    std::fs::copy(&theme_path, &track_buf).expect("Failed to copy a file due to permissions probably");
+                    // // check if we have the required permissions...
+                    // match std::fs::copy(&theme_path, &track_buf) {
+                    //     Ok(_) => println!("Applied '{:?}'.", theme_path),
+                    //     Err(_) => {
+                    //         exec_shell(&(String::from("sudo cp ") + &theme_path.to_str().unwrap() + &track_buf.to_str().unwrap()));
+                    //     }
+                    // }
                 }
             },
             "delete" | "del" => {
