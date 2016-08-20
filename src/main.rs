@@ -149,7 +149,7 @@ fn main() {
                     print_help(Help::New);
                     return;
                 }
-                
+
                 match std::fs::create_dir(ricem_dir.join(args[2].clone())) {
                     Err(why) => println!("! {:?}", why.kind()),
                     Ok(_) => {
@@ -159,9 +159,8 @@ fn main() {
 
                 themes.push(Theme::new(args[2].clone()));
 
-                match select_theme(args[2].clone(), &themes, &json_util) {
-                    Some(name) => selected_theme = name,
-                    None => {}
+                if let Some(name) = select_theme(args[2].clone(), &themes, &json_util) {
+                    selected_theme = name;
                 }
             },
             "status" => {
@@ -281,16 +280,13 @@ fn main() {
                 }
                 
                 let mut json_obj = json_util.read();
-                
-                match themes.iter().find(|&t| t.name == args[2]) {
-                    Some(_) => {
-                        json_obj["themes"].remove(&args[2]);
-                    },
-                    None => {
-                        println!("Error: that theme does not exist.");
-                        print_help(Help::Delete);
-                        return;
-                    }
+
+                if let Some(_) = themes.iter().find(|&t| t.name == args[2]) {
+                    json_obj["themes"].remove(&args[2]);
+                } else {
+                    println!("Error: that theme does not exist.");
+                    print_help(Help::Delete);
+                    return;
                 }
 
                 json_util.write(&json_obj);
