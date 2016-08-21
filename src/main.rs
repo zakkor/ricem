@@ -127,7 +127,6 @@ fn main() {
         match args[1].as_str() {
             "help" | "h" => {
                 print_help(Help::Default);
-                exec_shell("sudo ls");
             },
             "version" | "v" => {
                 println!("ricem version {} running on {} GNU/Linux.", VERSION, detect_distro())
