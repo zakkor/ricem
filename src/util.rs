@@ -1,4 +1,4 @@
-use std::process::{Output, Command};
+use std::process::{Output, Command, ExitStatus};
 
 
 /// Returns a `str` containing the name of the Linux distribution the user is currently running.
@@ -30,5 +30,13 @@ pub fn exec_shell(arg: &str) -> Output {
         .arg("-c")
         .arg(arg)
         .output()
+        .expect("failed to execute process")
+}
+
+pub fn exec_shell_with_output(arg: &str) -> ExitStatus {
+    Command::new("sh")
+        .arg("-c")
+        .arg(arg)
+        .status()
         .expect("failed to execute process")
 }

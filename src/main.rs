@@ -164,7 +164,16 @@ fn main() {
                     
                     println!("Current theme is tracking the following files:");
                     for (key, val) in json_obj["themes"][&selected_theme].entries() {
-                        println!("\ttemplate '{}' with file '{}' located in '{}'", key, val[0], val[1]);
+                        println!("\ttemplate '{}' with file '{}' located in '{}'", key, val["file"], val["path"]);
+                        
+                        // print package dependencies if there are any
+                        if !val["deps"].is_null() {
+                            print!("\t\twith dependencies: ");
+                            for dep in val["deps"].members() {
+                                print!("{} ", dep);
+                            }
+                            println!("");
+                        }
                     }
                 }
             },
@@ -193,7 +202,12 @@ fn main() {
 
                             let (file, location) = 
                                 if !template.is_null() {
-                                    let dist = detect_distro();
+                                    let mut dist = detect_distro();
+                                    
+                                    if template[dist].is_null() {
+                                        dist = "Default";
+                                    }
+                                    
                                     (template[dist][0].clone(), template[dist][1].clone())
                                 }
                             else {
@@ -212,8 +226,13 @@ fn main() {
                                          .unwrap()) + "/").into())
                             };
                             
-                            json_obj["themes"][&selected_theme][&args[i]][0] = file;
-                            json_obj["themes"][&selected_theme][&args[i]][1] = location;
+                            json_obj["themes"][&selected_theme][&args[i]]["file"] = file;
+                            json_obj["themes"][&selected_theme][&args[i]]["path"] = location;
+
+                            // add deps
+                            if !template["deps"].is_null() {
+                                json_obj["themes"][&selected_theme][&args[i]]["deps"] = template["deps"].clone();
+                            }
 
                             json_util.write(&json_obj);
                         },
@@ -230,10 +249,10 @@ fn main() {
 
                 for (_, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
-                    theme_path.push(val[0].as_str().unwrap());
+                    theme_path.push(val["file"].as_str().unwrap());
                     println!("Synced {:?}", theme_path);
 
-                    let track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
 
                     std::fs::copy(track_buf, theme_path).unwrap();
                 }
@@ -254,10 +273,10 @@ fn main() {
 
                 for (_, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
-                    theme_path.push(val[0].as_str().unwrap());
+                    theme_path.push(val["file"].as_str().unwrap());
                     
 
-                    let track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
 
                     // check if we have the required permissions...
                     if let Ok(_) = std::fs::copy(&theme_path, &track_buf) {
@@ -373,6 +392,23 @@ fn main() {
                 for t in themes {
                     println!("\t{}", t.name);
                 }
+            },
+            "installdeps" => {
+                let json_obj = json_util.read();
+                for (key, val) in json_obj["themes"][&selected_theme].entries() {
+                    let mut deps_to_install = String::new();
+                    if !val["deps"].is_null() {
+                        for dep in val["deps"].members() {
+                            deps_to_install.push_str(dep.as_str().unwrap());
+                            deps_to_install.push(' ');
+                        }
+                        
+                        println!("Installing dependencies for file '{}'", key);
+                        let install_cmd = &(String::from("sudo pacman -S --needed ") + &deps_to_install);
+                        exec_shell_with_output(install_cmd);
+                    }
+                }
+
             },
             _ => {
                 println!("Error: Unknown command.");
