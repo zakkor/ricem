@@ -133,7 +133,10 @@ fn main() {
     }
     else {
         match args[1].as_str() {
-            "help" | "h" => print_help(Help::Default),
+            "help" | "h" => {
+                print_help(Help::Default);
+                exec_shell("sudo ls");
+            },
             "version" | "v" => {
                 println!("ricem version {} running on {} GNU/Linux.", VERSION, detect_distro())
             },
@@ -269,15 +272,16 @@ fn main() {
 
                     let mut track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
 
-
-                    std::fs::copy(&theme_path, &track_buf).expect("Failed to copy a file due to permissions probably");
-                    // // check if we have the required permissions...
-                    // match std::fs::copy(&theme_path, &track_buf) {
-                    //     Ok(_) => println!("Applied '{:?}'.", theme_path),
-                    //     Err(_) => {
-                    //         exec_shell(&(String::from("sudo cp ") + &theme_path.to_str().unwrap() + &track_buf.to_str().unwrap()));
-                    //     }
-                    // }
+                    // check if we have the required permissions...
+                    if let Ok(_) = std::fs::copy(&theme_path, &track_buf) {
+                        println!("Applied {:?}.", theme_path)
+                    } else {
+                        let cp_with_sudo_cmd = String::from("sudo cp ") + &theme_path.to_str().unwrap() + " " + &track_buf.to_str().unwrap();
+                        println!("Need sudo for this command: {}", &cp_with_sudo_cmd);
+                        if exec_shell(&cp_with_sudo_cmd).status.success() {
+                            println!("Applied {:?}.", theme_path);
+                        }
+                    }
                 }
             },
             "delete" | "del" => {
