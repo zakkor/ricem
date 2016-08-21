@@ -1,6 +1,5 @@
 use json::JsonValue;
 use std::path::PathBuf;
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::*;
 use std::env::home_dir;

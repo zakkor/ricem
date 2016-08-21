@@ -15,8 +15,7 @@ use util::*;
 
 use std::fs::File;
 use std::io::*;
-use json::JsonValue;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 
 const VERSION: f32 = 0.2;
@@ -77,7 +76,7 @@ fn main() {
     match std::fs::read_dir(&ricem_dir) {
         Err(_) => {
             // if ricem dir is not found create it
-            std::fs::create_dir(&ricem_dir);
+            std::fs::create_dir(&ricem_dir).expect("Could not create theme directory.");
         },
         Ok(dir) => {
             // add themes based on existing directory names
@@ -105,26 +104,19 @@ fn main() {
     }
 
     // try to find config file
-    match File::open(&conf_path) {
-        Ok(mut file) => {
-            // parse the configs and apply them
-            let mut data = String::new();
-            file.read_to_string(&mut data);
-            let mut obj = json::parse(&data).unwrap();
-            selected_theme = obj["selected"].as_str().unwrap().to_string();
-        },
-        Err(_) => {
-            let empty_json = object!{
-                "selected" => "none"
-            };
-            {
-                // create config file
-                let mut new_file = File::create(&conf_path).unwrap();
-                new_file.write_fmt(format_args!("{:#}", empty_json));
-            }
-        }
-    }
+    if let Ok(_) = File::open(&conf_path) {
+        // parse the configs and apply them
+        let json_obj = json_util.read();
+        selected_theme = json_obj["selected"].as_str().unwrap().to_string();
+    } else {
+        let empty_json = object!{
+            "selected" => "none"
+        };
 
+        // create config file
+        let mut new_file = File::create(&conf_path).unwrap();
+        new_file.write_fmt(format_args!("{:#}", empty_json)).expect("Could not create config file.");
+    }
 
     if args.len() <= 1 {
         println!("Error: no arguments provided.");
@@ -162,9 +154,7 @@ fn main() {
 
                 themes.push(Theme::new(args[2].clone()));
 
-                if let Some(name) = select_theme(args[2].clone(), &themes, &json_util) {
-                    selected_theme = name;
-                }
+                select_theme(args[2].clone(), &themes, &json_util);
             },
             "status" => {
                 if selected_theme.is_empty() || selected_theme == "none" {
@@ -186,9 +176,7 @@ fn main() {
                     return;
                 }
 
-                if let Some(name) = select_theme(args[2].clone(), &themes, &json_util) {
-                    selected_theme = name;
-                }
+                select_theme(args[2].clone(), &themes, &json_util);
             },
             "track" | "t" => {
                 if args.len() < 3 {
@@ -199,7 +187,7 @@ fn main() {
 
                 for i in 2..args.len() {
                     match themes.iter_mut().find(|ref t| t.name == selected_theme) {
-                        Some(theme) => {
+                        Some(_) => {
                             let mut json_obj = json_util.read();
                             
                             let template = json_obj["templates"][&args[i]].clone();
@@ -239,9 +227,9 @@ fn main() {
                 exec_shell(&(String::from("cd ~/.ricem && git add . && git commit -m \"Files from before syncing theme named '")
                            + &selected_theme + "'\""));
                 
-                let mut json_obj = json_util.read();
+                let json_obj = json_util.read();
 
-                for (key, val) in json_obj["themes"][&selected_theme].entries() {
+                for (_, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val[0].as_str().unwrap());
                     println!("Synced {:?}", theme_path);
@@ -263,14 +251,14 @@ fn main() {
                         selected_theme
                     };
                 
-                let mut json_obj = json_util.read();
+                let json_obj = json_util.read();
 
-                for (key, val) in json_obj["themes"][&selected_theme].entries() {
+                for (_, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val[0].as_str().unwrap());
                     
 
-                    let mut track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&val[0], &val[1]);
 
                     // check if we have the required permissions...
                     if let Ok(_) = std::fs::copy(&theme_path, &track_buf) {
@@ -304,7 +292,7 @@ fn main() {
                 json_util.write(&json_obj);
                 
                 // delete theme dir recursively
-                std::fs::remove_dir_all(ricem_dir.join(&args[2]));
+                std::fs::remove_dir_all(ricem_dir.join(&args[2])).expect("Could not remove temp dir");
 
                 // select none
                 select_theme("none".to_string(), &themes, &json_util);
@@ -322,7 +310,7 @@ fn main() {
                 
 
                 // merge temp/.conf with ~/.ricem/.conf
-                let mut temp_conf_path = ricem_dir.join("temp").join(".conf");
+                let temp_conf_path = ricem_dir.join("temp").join(".conf");
 
                 let temp_json_obj = JsonUtil::new(&temp_conf_path).read();
                 
