@@ -55,6 +55,46 @@ fn select_theme(name: String, themes: &Vec<Theme>, json_util: &JsonUtil) -> Opti
     return_val
 }
 
+fn track_template(json_obj: &mut json::JsonValue, template_name: &str, selected_theme: &String) {
+    let template = json_obj["templates"][template_name].clone();
+
+    let (file, location) = 
+        if !template.is_null() {
+            let mut dist = detect_distro();
+            
+            if template[dist].is_null() {
+                dist = "Default";
+            }
+            
+            (template[dist][0].clone(), template[dist][1].clone())
+        }
+    else {
+        (Path::new(template_name)
+         .file_name()
+         .unwrap()
+         .to_str()
+         .unwrap()
+         .into()
+         ,
+         (String::from(
+             Path::new(template_name)
+                 .parent()
+                 .unwrap()
+                 .to_str()
+                 .unwrap()) + "/").into())
+    };
+
+    println!("from template '{}' tracking file '{}' located in '{}'", template_name, file, location);
+    
+    json_obj["themes"][selected_theme][template_name]["file"] = file;
+    json_obj["themes"][selected_theme][template_name]["path"] = location;
+
+    // add deps
+    if !template["deps"].is_null() {
+        json_obj["themes"][selected_theme][template_name]["deps"] = template["deps"].clone();
+    }
+}
+
 fn main() {
     let mut themes: Vec<Theme> = vec![];
     let mut selected_theme = String::new();
@@ -189,52 +229,28 @@ fn main() {
                     return;
                 }
 
+                let mut json_obj = json_util.read();
+                
                 for i in 2..args.len() {
-                    match themes.iter_mut().find(|ref t| t.name == selected_theme) {
-                        Some(_) => {
-                            let mut json_obj = json_util.read();
-                            
-                            let template = json_obj["templates"][&args[i]].clone();
-
-                            let (file, location) = 
-                                if !template.is_null() {
-                                    let mut dist = detect_distro();
-                                    
-                                    if template[dist].is_null() {
-                                        dist = "Default";
-                                    }
-                                    
-                                    (template[dist][0].clone(), template[dist][1].clone())
-                                }
-                            else {
-                                (Path::new(&args[i])
-                                 .file_name()
-                                 .unwrap()
-                                 .to_str()
-                                 .unwrap()
-                                 .into()
-                                 ,
-                                 (String::from(
-                                     Path::new(&args[i])
-                                         .parent()
-                                         .unwrap()
-                                         .to_str()
-                                         .unwrap()) + "/").into())
-                            };
-                            
-                            json_obj["themes"][&selected_theme][&args[i]]["file"] = file;
-                            json_obj["themes"][&selected_theme][&args[i]]["path"] = location;
-
-                            // add deps
-                            if !template["deps"].is_null() {
-                                json_obj["themes"][&selected_theme][&args[i]]["deps"] = template["deps"].clone();
-                            }
-
-                            json_util.write(&json_obj);
-                        },
-                        None => {}
+                    if !json_obj["groups"][&args[i]].is_null() {
+                        println!("From group '{}':", &args[i]);
+                        
+                        for templ in json_obj["groups"][&args[i]].clone().members() {
+                            print!("\t");
+                            track_template(&mut json_obj, templ.as_str().unwrap(), &selected_theme);
+                        }
+                    }
+                    else {
+                        match themes.iter_mut().find(|ref t| t.name == selected_theme) {
+                            Some(_) => {
+                                track_template(&mut json_obj, &args[i], &selected_theme);
+                            },
+                            None => {}
+                        }
                     }
                 }
+                
+                json_util.write(&json_obj);
             },
             "sync" | "y" => {
                 // do a git commit with the pre-replace files
