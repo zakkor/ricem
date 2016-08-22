@@ -389,6 +389,10 @@ fn main() {
                 }
             },
             "installdeps" => {
+                if detect_distro() != "Arch" {
+                    println!("Error: installdeps feature only works on Arch GNU/Linux right now, sorry!");
+                    return;
+                }
                 let json_obj = json_util.read();
                 for (key, val) in json_obj["themes"][&selected_theme].entries() {
                     let mut deps_to_install = String::new();
