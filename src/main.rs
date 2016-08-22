@@ -47,17 +47,13 @@ fn select_theme(name: String, themes: &Vec<Theme>, json_util: &JsonUtil) -> Opti
             }
         }
     }
-   
+    
     if return_val != None {
         json_util.write(&json_obj);
     }
-
+    
     return_val
 }
-
-
-
-
 
 fn main() {
     let mut themes: Vec<Theme> = vec![];
@@ -275,9 +271,10 @@ fn main() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
                     theme_path.push(val["file"].as_str().unwrap());
                     
-
                     let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
-
+                    // create directories if they don't exist
+                    exec_shell(&(String::from("mkdir -p ") + &track_buf.parent().unwrap().to_str().unwrap()));
+                    
                     // check if we have the required permissions...
                     if let Ok(_) = std::fs::copy(&theme_path, &track_buf) {
                         println!("Applied {:?}.", theme_path)
@@ -384,8 +381,6 @@ fn main() {
                     exec_shell(&add_origin_cmd);
                     println!("Done!");
                 }
-
-
             },
             "list" | "l" => {
                 println!("Themes:");
@@ -408,7 +403,6 @@ fn main() {
                         exec_shell_with_output(install_cmd);
                     }
                 }
-
             },
             _ => {
                 println!("Error: Unknown command.");
