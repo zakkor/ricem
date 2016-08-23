@@ -441,8 +441,8 @@ fn main() {
 
                 let full_path = String::from(template[dist][1].as_str().unwrap()) + template[dist][0].as_str().unwrap();
                 
-                // open in user's editor
-                exec_shell(&(String::from("$VISUAL ") + &full_path));
+                // open in user's editor, in background
+                exec_shell(&(String::from("($VISUAL ") + &(full_path + " &> /dev/null &)")));
             },
             _ => {
                 println!("Error: Unknown command.");
