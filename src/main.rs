@@ -67,32 +67,17 @@ fn track_template(json_obj: &mut json::JsonValue, template_name: &str, selected_
             }
             
             (template[dist][0].clone(), template[dist][1].clone())
-        }
-    else {
-        (Path::new(template_name)
-         .file_name()
-         .unwrap()
-         .to_str()
-         .unwrap()
-         .into()
-         ,
-         (String::from(
-             Path::new(template_name)
-                 .parent()
-                 .unwrap()
-                 .to_str()
-                 .unwrap()) + "/").into())
-    };
-
-    println!("from template '{}' tracking file '{}' located in '{}'", template_name, file, location);
+        } else {
+            panic!("No such template");
+        };
     
-    json_obj["themes"][selected_theme][template_name]["file"] = file;
-    json_obj["themes"][selected_theme][template_name]["path"] = location;
+    println!("from template '{}' tracking file '{}' located in '{}'", template_name, file, location);
 
-    // add deps
-    if !template["deps"].is_null() {
-        json_obj["themes"][selected_theme][template_name]["deps"] = template["deps"].clone();
+    if json_obj["themes"][selected_theme].is_null() {
+        json_obj["themes"][selected_theme] = json::JsonValue::new_array();
     }
+
+    json_obj["themes"][selected_theme].push(template_name).unwrap();
 }
 
 fn main() {
@@ -191,21 +176,32 @@ fn main() {
 
                 select_theme(args[2].clone(), &themes, &json_util);
             },
-            "status" => {
+            "status" | "st" => {
                 if selected_theme.is_empty() || selected_theme == "none" {
                     println!("No theme currently selected");
                 } else {
                     println!("Currently selected theme is '{}'", selected_theme);
                     let json_obj = json_util.read();
-                    
+
+                    let mut dist = detect_distro();
+
                     println!("Current theme is tracking the following files:");
-                    for (key, val) in json_obj["themes"][&selected_theme].entries() {
-                        println!("\ttemplate '{}' with file '{}' located in '{}'", key, val["file"], val["path"]);
+                    
+                    for templ_name in json_obj["themes"][&selected_theme].members() {
+                        let templ_info = json_obj["templates"][templ_name.as_str().unwrap()].clone();
+                        
+                        if templ_info[dist].is_null() {
+                            dist = "Default";
+                        }
+                        
+                        println!("\ttemplate '{}' with file '{}' located in '{}'", templ_name
+                                 , templ_info[dist][0]
+                                 , templ_info[dist][1]);
                         
                         // print package dependencies if there are any
-                        if !val["deps"].is_null() {
+                        if !templ_info["deps"].is_null() {
                             print!("\t\twith dependencies: ");
-                            for dep in val["deps"].members() {
+                            for dep in templ_info["deps"].members() {
                                 print!("{} ", dep);
                             }
                             println!("");
@@ -240,13 +236,8 @@ fn main() {
                             track_template(&mut json_obj, templ.as_str().unwrap(), &selected_theme);
                         }
                     }
-                    else {
-                        match themes.iter_mut().find(|ref t| t.name == selected_theme) {
-                            Some(_) => {
-                                track_template(&mut json_obj, &args[i], &selected_theme);
-                            },
-                            None => {}
-                        }
+                    else if !json_obj["themes"][&selected_theme].is_null() {
+                        track_template(&mut json_obj, &args[i], &selected_theme);
                     }
                 }
                 
@@ -258,13 +249,21 @@ fn main() {
                            + &selected_theme + "'\""));
                 
                 let json_obj = json_util.read();
+                let mut dist = detect_distro();
 
-                for (_, val) in json_obj["themes"][&selected_theme].entries() {
+                for templ in json_obj["themes"][&selected_theme].members() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
-                    theme_path.push(val["file"].as_str().unwrap());
+                    
+                    if templ[dist].is_null() {
+                        dist = "Default";
+                    }
+
+                    let templ_file_info = json_obj["templates"][templ.as_str().unwrap()][dist].clone();
+                    
+                    theme_path.push(templ_file_info[0].as_str().unwrap());
                     println!("Synced {:?}", theme_path);
 
-                    let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&templ_file_info[0], &templ_file_info[1]);
 
                     std::fs::copy(track_buf, theme_path).unwrap();
                 }
@@ -282,12 +281,21 @@ fn main() {
                     };
                 
                 let json_obj = json_util.read();
-
-                for (_, val) in json_obj["themes"][&selected_theme].entries() {
+                let mut dist = detect_distro();
+                
+                for templ in json_obj["themes"][&selected_theme].members() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
-                    theme_path.push(val["file"].as_str().unwrap());
+
+                    if templ[dist].is_null() {
+                        dist = "Default";
+                    }
+
+                    let templ_file_info = json_obj["templates"][templ.as_str().unwrap()][dist].clone();
                     
-                    let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
+                    
+                    theme_path.push(templ_file_info[0].as_str().unwrap());
+                    
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&templ_file_info[0], &templ_file_info[1]);
                     // create directories if they don't exist
                     exec_shell(&(String::from("mkdir -p ") + &track_buf.parent().unwrap().to_str().unwrap()));
                     
@@ -339,24 +347,18 @@ fn main() {
                 let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp && mv -v ~/.ricem/temp/* ~/.ricem/";
                 exec_shell(&clone_cmd);
                 
-
-                // merge temp/.conf with ~/.ricem/.conf
                 let temp_conf_path = ricem_dir.join("temp").join(".conf");
 
                 let temp_json_obj = JsonUtil::new(&temp_conf_path).read();
-                
-                let mut new_obj = object!{};
-
-                // copy stuff from temp/.conf to a new empty object
-                for (key, val) in temp_json_obj["themes"].entries() {
-                    new_obj[key] = val.clone();
-                }
-
                 let mut json_obj = json_util.read();
+                
+                // merge temp/.conf with ~/.ricem/.conf
 
-                // add themes from the new object that we read from temp/.conf to our json_obj
-                for (key, val) in new_obj.entries() {
+                // add themes that don't conflict
+                
+                for (key, val) in temp_json_obj["themes"].entries() {
                     if json_obj["themes"][key].is_null() {
+                        println!("Added theme '{}'", key);
                         json_obj["themes"][key] = val.clone();
                     }
                 }
@@ -409,20 +411,43 @@ fn main() {
                     println!("Error: installdeps feature only works on Arch GNU/Linux right now, sorry!");
                     return;
                 }
+                
                 let json_obj = json_util.read();
-                for (key, val) in json_obj["themes"][&selected_theme].entries() {
+                for templ in json_obj["themes"][&selected_theme].members() {
+                    let templ_name = templ.as_str().unwrap();
                     let mut deps_to_install = String::new();
-                    if !val["deps"].is_null() {
-                        for dep in val["deps"].members() {
+                    if !json_obj["templates"][templ_name]["deps"].is_null() {
+                        for dep in json_obj["templates"][templ_name]["deps"].members() {
                             deps_to_install.push_str(dep.as_str().unwrap());
                             deps_to_install.push(' ');
                         }
                         
-                        println!("Installing dependencies for file '{}'", key);
+                        println!("Installing dependencies for file '{}'", templ_name);
                         let install_cmd = &(String::from("sudo pacman -S --needed ") + &deps_to_install);
                         exec_shell_with_output(install_cmd);
                     }
                 }
+            },
+            "edit" | "e" => {
+                if args.len() < 3 {
+                    println!("Error: need to specify a template to edit");
+                    return;
+                }
+
+                let json_obj = json_util.read();
+                
+                let template = json_obj["templates"][&args[2]].clone();
+                
+                let mut dist = detect_distro();
+                
+                if template[dist].is_null() {
+                    dist = "Default";
+                }
+
+                let full_path = String::from(template[dist][1].as_str().unwrap()) + template[dist][0].as_str().unwrap();
+                
+                // open in user's editor, in background
+                exec_shell(&(String::from("($VISUAL ") + &(full_path + " &> /dev/null &)")));
             },
             _ => {
                 println!("Error: Unknown command.");
