@@ -249,15 +249,21 @@ fn main() {
                            + &selected_theme + "'\""));
                 
                 let json_obj = json_util.read();
+                let mut dist = detect_distro();
 
-                // TODO: fix
-
-                for (_, val) in json_obj["themes"][&selected_theme].entries() {
+                for templ in json_obj["themes"][&selected_theme].members() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
-                    theme_path.push(val["file"].as_str().unwrap());
+                    
+                    if templ[dist].is_null() {
+                        dist = "Default";
+                    }
+
+                    let templ_file_info = json_obj["templates"][templ.as_str().unwrap()][dist].clone();
+                    
+                    theme_path.push(templ_file_info[0].as_str().unwrap());
                     println!("Synced {:?}", theme_path);
 
-                    let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&templ_file_info[0], &templ_file_info[1]);
 
                     std::fs::copy(track_buf, theme_path).unwrap();
                 }
