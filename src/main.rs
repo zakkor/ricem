@@ -411,19 +411,18 @@ fn main() {
                     println!("Error: installdeps feature only works on Arch GNU/Linux right now, sorry!");
                     return;
                 }
-
-                // TODO: fix
                 
                 let json_obj = json_util.read();
-                for (key, val) in json_obj["themes"][&selected_theme].entries() {
+                for templ in json_obj["themes"][&selected_theme].members() {
+                    let templ_name = templ.as_str().unwrap();
                     let mut deps_to_install = String::new();
-                    if !val["deps"].is_null() {
-                        for dep in val["deps"].members() {
+                    if !json_obj["templates"][templ_name]["deps"].is_null() {
+                        for dep in json_obj["templates"][templ_name]["deps"].members() {
                             deps_to_install.push_str(dep.as_str().unwrap());
                             deps_to_install.push(' ');
                         }
                         
-                        println!("Installing dependencies for file '{}'", key);
+                        println!("Installing dependencies for file '{}'", templ_name);
                         let install_cmd = &(String::from("sudo pacman -S --needed ") + &deps_to_install);
                         exec_shell_with_output(install_cmd);
                     }
