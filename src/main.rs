@@ -423,6 +423,27 @@ fn main() {
                     }
                 }
             },
+            "edit" | "e" => {
+                if args.len() < 3 {
+                    println!("Error: need to specify a template to edit");
+                    return;
+                }
+
+                let json_obj = json_util.read();
+                
+                let template = json_obj["templates"][&args[2]].clone();
+                
+                let mut dist = detect_distro();
+                
+                if template[dist].is_null() {
+                    dist = "Default";
+                }
+
+                let full_path = String::from(template[dist][1].as_str().unwrap()) + template[dist][0].as_str().unwrap();
+                
+                // open in user's editor
+                exec_shell(&(String::from("$VISUAL ") + &full_path));
+            },
             _ => {
                 println!("Error: Unknown command.");
                 print_help(Help::Default);
