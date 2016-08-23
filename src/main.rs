@@ -18,7 +18,7 @@ use std::io::*;
 use std::path::Path;
 
 
-const VERSION: f32 = 0.2;
+const VERSION: f32 = 0.4;
 
 fn select_theme(name: String, themes: &Vec<Theme>, json_util: &JsonUtil) -> Option<String> {
     let mut json_obj = json_util.read();
