@@ -281,14 +281,21 @@ fn main() {
                     };
                 
                 let json_obj = json_util.read();
-
-                // TODO: fix
+                let mut dist = detect_distro();
                 
-                for (_, val) in json_obj["themes"][&selected_theme].entries() {
+                for templ in json_obj["themes"][&selected_theme].members() {
                     let mut theme_path = ricem_dir.join(&selected_theme);
-                    theme_path.push(val["file"].as_str().unwrap());
+
+                    if templ[dist].is_null() {
+                        dist = "Default";
+                    }
+
+                    let templ_file_info = json_obj["templates"][templ.as_str().unwrap()][dist].clone();
                     
-                    let track_buf = JsonUtil::json_path_to_pathbuf(&val["file"], &val["path"]);
+                    
+                    theme_path.push(templ_file_info[0].as_str().unwrap());
+                    
+                    let track_buf = JsonUtil::json_path_to_pathbuf(&templ_file_info[0], &templ_file_info[1]);
                     // create directories if they don't exist
                     exec_shell(&(String::from("mkdir -p ") + &track_buf.parent().unwrap().to_str().unwrap()));
                     
@@ -340,25 +347,18 @@ fn main() {
                 let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp && mv -v ~/.ricem/temp/* ~/.ricem/";
                 exec_shell(&clone_cmd);
                 
-
-                // TODO: check if this works
-                // merge temp/.conf with ~/.ricem/.conf
                 let temp_conf_path = ricem_dir.join("temp").join(".conf");
 
                 let temp_json_obj = JsonUtil::new(&temp_conf_path).read();
-                
-                let mut new_obj = object!{};
-
-                // copy stuff from temp/.conf to a new empty object
-                for (key, val) in temp_json_obj["themes"].entries() {
-                    new_obj[key] = val.clone();
-                }
-
                 let mut json_obj = json_util.read();
+                
+                // merge temp/.conf with ~/.ricem/.conf
 
-                // add themes from the new object that we read from temp/.conf to our json_obj
-                for (key, val) in new_obj.entries() {
+                // add themes that don't conflict
+                
+                for (key, val) in temp_json_obj["themes"].entries() {
                     if json_obj["themes"][key].is_null() {
+                        println!("Added theme '{}'", key);
                         json_obj["themes"][key] = val.clone();
                     }
                 }
