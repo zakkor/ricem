@@ -13,6 +13,7 @@ pub enum Help {
     Edit,
     Installdeps,
     Import,
+    Update,
     
     Default,
 }
@@ -35,7 +36,8 @@ pub fn print_help(command: Help) {
         Help::List => "\tlist, l   \n\t\tprints all your themes\n",
         Help::Edit => "\tedit, e   [template_name]\n\t\topens the file tracked by [template_name] in the editor defined by the enviroment variable '$VISUAL'\n\t\tadd this variable to your .bashrc or .bash_profile if you don't have it\n",
         Help::Installdeps => "\tinstalldeps   \n\t\t_ONLY ON ARCH LINUX_ installs only the needed dependencies using pacman\n",
-        Help::Import => "\timport, im   [link_to_github_repo]\n\t\timport a github repo containing dotfiles and adds whatever matches it finds to the currently selected theme\n\t\tfor close enough fuzzy matches it finds, it will show a peek of the file and prompt the user with a y/n to confirm which template the file belongs to\n"
+        Help::Import => "\timport, im   [link_to_github_repo]\n\t\timport a github repo containing dotfiles and adds whatever matches it finds to the currently selected theme\n\t\tfor close enough fuzzy matches it finds, it will show a peek of the file and prompt the user with a y/n to confirm which template the file belongs to\n",
+        Help::Update => "\tupdate, upd   \n\t\tgrabs the latest version of the templates config file from github\n",
     };
     
     match command {

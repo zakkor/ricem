@@ -247,7 +247,7 @@ fn main() {
                             track_template(&mut json_obj, templ.as_str().unwrap(), &selected_theme);
                         }
                     }
-                    else if !json_obj["themes"][&selected_theme].is_null() {
+                    else if json_obj["selected"] != "none" {
                         track_template(&mut json_obj, &args[i], &selected_theme);
                     }
                 }
@@ -528,6 +528,9 @@ fn main() {
                 // remove temp dir
                 exec_shell("rm -rf ~/.ricem/temp");
                 
+            },
+            "update" | "upd" => {
+                exec_shell_with_output("wget https://raw.githubusercontent.com/zakkor/ricem/master/.conf -O ~/.ricem/.conf");
             },
             _ => {
                 println!("Error: Unknown command.");
