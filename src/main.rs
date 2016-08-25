@@ -141,13 +141,9 @@ fn main() {
         let json_obj = json_util.read();
         selected_theme = json_obj["selected"].as_str().unwrap().to_string();
     } else {
-        let empty_json = object!{
-            "selected" => "none"
-        };
-
-        // create config file
-        let mut new_file = File::create(&conf_path).unwrap();
-        new_file.write_fmt(format_args!("{:#}", empty_json)).expect("Could not create config file.");
+        // download latest config file
+        println!("Downloading config file");
+        exec_shell_with_output("wget https://raw.githubusercontent.com/zakkor/ricem/master/.conf -O ~/.ricem/.conf");
     }
 
     if args.len() <= 1 {
