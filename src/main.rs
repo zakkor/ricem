@@ -473,6 +473,13 @@ fn main() {
                     print_help(Help::Import);
                     return;
                 }
+
+                let json_obj = json_util.read();
+                if json_obj["selected"] == "none" {
+                    println!("Error: need to select a theme first.");
+                    print_help(Help::Select);
+                    return;
+                }
                 
                 let getch = Getch::new().unwrap();
                 
@@ -483,12 +490,7 @@ fn main() {
                 exec_shell(&clone_cmd);
                 let temp_dir = ricem_dir.join("temp");
 
-                let json_obj = json_util.read();
-                if json_obj["selected"] == "none" {
-                    println!("Error: need to select a theme first.");
-                    print_help(Help::Select);
-                    return;
-                }
+                
                 let mut to_add = vec![];
 
                 'outer: for (key, val) in json_obj["templates"].entries() {
