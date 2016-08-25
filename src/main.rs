@@ -1,5 +1,14 @@
 #[macro_use] extern crate json;
 #[macro_use] extern crate maplit;
+extern crate edit_distance;
+extern crate walkdir;
+extern crate getch;
+
+use getch::Getch;
+
+use edit_distance::edit_distance;
+
+use walkdir::{WalkDir, Iter, WalkDirIterator};
 
 mod theme;
 use theme::*;
@@ -88,6 +97,8 @@ fn main() {
     let mut ricem_dir = std::env::home_dir().unwrap();
     ricem_dir.push(".ricem");
     ricem_dir.as_path();
+
+
 
 
     let conf_path = ricem_dir.join(".conf");
@@ -258,7 +269,7 @@ fn main() {
                         dist = "Default";
                     }
 
-                    let templ_file_info = json_obj["templates"][templ.as_str().unwrap()][dist].clone();
+                    let templ_file_info = &json_obj["templates"][templ.as_str().unwrap()][dist];
                     
                     theme_path.push(templ_file_info[0].as_str().unwrap());
                     println!("Synced {:?}", theme_path);
@@ -448,6 +459,64 @@ fn main() {
                 
                 // open in user's editor, in background
                 exec_shell(&(String::from("($VISUAL ") + &(full_path + " &> /dev/null &)")));
+            },
+            "import" | "im" => {
+                if args.len() < 3 {
+                    println!("Error: need to specify a github url to import");
+                    return;
+                }
+                let getch = Getch::new().unwrap();
+                let extensions_ignore = ["png", "jpg"]; // add more
+                println!("Cloning repository...");
+                let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp";
+                exec_shell(&clone_cmd);
+                let temp_dir = ricem_dir.join("temp");
+
+                let json_obj = json_util.read();
+                let mut to_add = vec![];
+
+                'outer: for (key, val) in json_obj["templates"].entries() {
+                    let walker = WalkDir::new(&temp_dir).into_iter();;
+                    for entry in walker {
+                        let entry = entry.unwrap();
+                        let templ_filename = val["Default"][0].as_str().unwrap();
+                        let entry_filename = entry.path().file_name().unwrap().to_str().unwrap();
+                        let edit_dist = edit_distance(templ_filename, entry_filename);
+                        if edit_dist < 3 {
+                            println!("do you think {} could be from {}?", entry_filename, key);
+                            println!("here's a peek at the file:\n");
+                            let f = File::open(entry.path()).unwrap();
+                            let reader = std::io::BufReader::new(f);
+
+                            for line in reader.lines().take(10) {
+                                println!("{}", line.unwrap());
+                            }
+
+                            println!("(y/n): ");
+                            let input = getch.getch().unwrap();
+                            std::process::Command::new("clear").status();
+                            if input as char == 'y' {
+                                let theme_path = ricem_dir.join(&selected_theme).join(templ_filename);
+                                println!("ENTRY: {:?}, THEME: {:?}",temp_dir.join(entry.path()).as_path(),&theme_path );
+                                std::fs::copy(temp_dir.join(entry.path()).as_path(), &theme_path).expect("wops");
+                                to_add.push(key);
+                                continue 'outer;
+                            }
+                        }
+                    }
+                }
+
+                let mut json_obj = json_util.read();
+                
+                for t in to_add {
+                    track_template(&mut json_obj, t, &selected_theme);
+                }
+
+                json_util.write(&json_obj);
+
+                // remove temp dir
+                exec_shell("rm -rf ~/.ricem/temp");
+                
             },
             _ => {
                 println!("Error: Unknown command.");
