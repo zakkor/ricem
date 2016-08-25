@@ -15,55 +15,78 @@ This is pre-release software that was tested only by me. It may wipe your whole 
 Look over the source code if you're unsure, and be careful.
 
 ## Usage
-- Create a new theme:
+### Creating and uploading a new theme:
 
 `ricem new my-theme`
 
-- Specify some files to track:
+##### Specify some files to track:
 
 `ricem track i3 .Xresources emacs ~/Pictures/wp.png`
 
-In this case, the i3 template will track `config` in `~/.i3/`, the emacs template will track `init.el` in `~/.emacs.d/`, and so on.
+In this case, the i3 template will track the template group `i3` which contains `i3wm` -(file `config` in `~/.i3/config`) and `i3status` (file `.i3status.conf` in `~/`), the emacs template will track `init.el` in `~/.emacs.d/`, and so on.
 
-- To copy the tracked files into your theme folder:
+##### To copy the tracked files from their locations in the system into your ricem theme folder:
 
 `ricem sync`
 
 All done!
 
-- Any time you want to reapply this theme, (let's say you messed up your `~/.i3/config`, or you want to switch between themes), it's as simple as:
-
-`ricem apply my-theme`
-
-This copies the files you `ricem sync`ed into their original paths.
-
-Note that in some cases (for example `/etc/i3status.conf`) you need to provide root to be able to apply stuff.
-
-`sudo ricem apply my-theme`
-
-Anytime you wish to get your configs (or someone elses configs) from Github:
-
-`ricem download https://github.com/username/ricem_repo`
-
-This merges whatever themes are in that repo with your own, but it doesn't overwrite your themes in case they have the same name.
-
-Try it with mine: `ricem dl https://github.com/zakkor/ricem-themes`
-
-It only contains two themes that contain an .Xresources each.
-
-- To upload your theme folder to a Github repository:
+##### Upload your newly made theme to a Github repository:
 
 `ricem upload git@github.com:username/repo`
 
 Please note that the Github url <b>needs</b> to be in SSH form (like above), and you <b>need</b> to have a SSH key registered to your PC active on your Github account.
 
-It will probably not upload if the repository has things that aren't in your theme folder. --- _maybe should add a `--force` flag for this?_
+### Downloading a Github repository created by ricem (like above):
 
-## Installing
-- Grab `ricem` and `.conf` from [the latest release](https://github.com/zakkor/ricem/releases).
+`ricem download https://github.com/username/ricem_repo`
+
+This merges whatever themes are in that repo with your own, but it doesn't overwrite your themes in case they have the same name.
+
+### Downloading a Github repository <b>NOT</b> created by ricem (ANY random repo with dotfiles in it)
+
+`ricem import https://github.com/username/random_dotfiles_repo`
+
+For close enough file matches, this will give you a peek of the file and prompt you with a y/n as to which template you think the file belongs to, and add them to the currently selected theme. You can them apply them directly with `ricem apply`.
+
+##### *On Arch Linux only (for now)*: Installing dependencies specified by the files tracked by the currently selected theme:
+
+`ricem installdeps`
+
+For example, if the currently selected theme contains the template `i3`, then this command will install "i3" and "i3status" using pacman, if needed.
+
+##### Applying the theme to the system
+
+`ricem apply my-theme`
+
+or
+
+`ricem apply`, to apply the currently selected theme.
+
+### Other commands:
+
+`ricem list` to list all your themes
+
+`ricem select <theme name>` to select a theme
+
+`ricem edit <template name>` to open a file in your editor (specified by $VISUAL). Example: `ricem edit rc.xml` will open `~/.config/openbox/rc.xml`
+
+`ricem update` will download the latest version of `.conf` that contains the latest templates directly from this github repo. <b>(Unstable and replaces your current .conf file which contains your themes)</b>
+
+## Obtaining
+#### Dependencies:
+- git
+- wget
+- GNU/Linux system: (need bash, cp, rm, mkdir, ...)
+
+#### Installing
+- Download `ricem` from [the latest release](https://github.com/zakkor/ricem/releases).
+- Make it executable (`chmod +x ricem`)
 - Copy `ricem` to `/usr/local/bin` (or whatever place you want that's in your path).
-- Make a directory called `.ricem` in your home. (`mkdir ~/.ricem`)
-- Copy `.conf` to `~/.ricem` (`cp .conf ~/.ricem`)
+
+#### Or compile it yourself:
+- clone this repo
+- `cargo build --release`
 
 ## Planned features
 - [x] Creating new themes
