@@ -27,7 +27,7 @@ use std::io::*;
 use std::path::Path;
 
 
-const VERSION: f32 = 0.4;
+const VERSION: f32 = 0.5;
 
 fn select_theme(name: String, themes: &Vec<Theme>, json_util: &JsonUtil) -> Option<String> {
     let mut json_obj = json_util.read();
@@ -526,7 +526,16 @@ fn main() {
                 
             },
             "update" | "upd" => {
-                exec_shell_with_output("wget https://raw.githubusercontent.com/zakkor/ricem/master/.conf -O ~/.ricem/.conf");
+                exec_shell("mkdir ~/.ricem/temp");
+                exec_shell_with_output("wget https://raw.githubusercontent.com/zakkor/ricem/master/.conf -O ~/.ricem/temp/.conf");
+                let temp_conf_path = ricem_dir.join("temp").join(".conf");
+
+                let mut temp_json_obj = JsonUtil::new(&temp_conf_path).read();
+                let mut json_obj = json_util.read();
+
+                json_obj["templates"] = temp_json_obj["templates"].take();
+                json_util.write(&json_obj);
+                exec_shell("rm -rf ~/.ricem/temp");
             },
             _ => {
                 println!("Error: Unknown command.");

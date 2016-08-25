@@ -71,7 +71,7 @@ or
 
 `ricem edit <template name>` to open a file in your editor (specified by $VISUAL). Example: `ricem edit rc.xml` will open `~/.config/openbox/rc.xml`
 
-`ricem update` will download the latest version of `.conf` that contains the latest templates directly from this github repo. <b>(Unstable and replaces your current .conf file which contains your themes)</b>
+`ricem update` will download the latest version of `.conf` that contains the latest templates directly from this github repo.
 
 ## Obtaining
 #### Dependencies:
