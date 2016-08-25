@@ -420,6 +420,7 @@ fn main() {
             "installdeps" => {
                 if detect_distro() != "Arch" {
                     println!("Error: installdeps feature only works on Arch GNU/Linux right now, sorry!");
+                    print_help(Help::Installdeps);
                     return;
                 }
                 
@@ -442,6 +443,7 @@ fn main() {
             "edit" | "e" => {
                 if args.len() < 3 {
                     println!("Error: need to specify a template to edit");
+                    print_help(Help::Edit);
                     return;
                 }
 
@@ -463,10 +465,14 @@ fn main() {
             "import" | "im" => {
                 if args.len() < 3 {
                     println!("Error: need to specify a github url to import");
+                    print_help(Help::Import);
                     return;
                 }
+                
                 let getch = Getch::new().unwrap();
+                
                 let extensions_ignore = ["png", "jpg"]; // add more
+                
                 println!("Cloning repository...");
                 let clone_cmd = String::from("git clone ") + &args[2] + " ~/.ricem/temp";
                 exec_shell(&clone_cmd);
@@ -476,15 +482,19 @@ fn main() {
                 let mut to_add = vec![];
 
                 'outer: for (key, val) in json_obj["templates"].entries() {
-                    let walker = WalkDir::new(&temp_dir).into_iter();;
+                    let walker = WalkDir::new(&temp_dir).into_iter();
                     for entry in walker {
                         let entry = entry.unwrap();
+                        
                         let templ_filename = val["Default"][0].as_str().unwrap();
                         let entry_filename = entry.path().file_name().unwrap().to_str().unwrap();
+                        
                         let edit_dist = edit_distance(templ_filename, entry_filename);
+                        
                         if edit_dist < 3 {
                             println!("do you think {} could be from {}?", entry_filename, key);
                             println!("here's a peek at the file:\n");
+                            
                             let f = File::open(entry.path()).unwrap();
                             let reader = std::io::BufReader::new(f);
 
@@ -494,7 +504,9 @@ fn main() {
 
                             println!("(y/n): ");
                             let input = getch.getch().unwrap();
+                            
                             std::process::Command::new("clear").status();
+                            
                             if input as char == 'y' {
                                 let theme_path = ricem_dir.join(&selected_theme).join(templ_filename);
                                 println!("ENTRY: {:?}, THEME: {:?}",temp_dir.join(entry.path()).as_path(),&theme_path );
