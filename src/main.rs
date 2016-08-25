@@ -509,7 +509,6 @@ fn main() {
                             
                             if input as char == 'y' {
                                 let theme_path = ricem_dir.join(&selected_theme).join(templ_filename);
-                                println!("ENTRY: {:?}, THEME: {:?}",temp_dir.join(entry.path()).as_path(),&theme_path );
                                 std::fs::copy(temp_dir.join(entry.path()).as_path(), &theme_path).expect("wops");
                                 to_add.push(key);
                                 continue 'outer;
