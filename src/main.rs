@@ -79,6 +79,7 @@ fn track_template(json_obj: &mut json::JsonValue, template_name: &str, selected_
         } else {
             panic!("No such template");
         };
+
     
     println!("from template '{}' tracking file '{}' located in '{}'", template_name, file, location);
 
@@ -87,6 +88,8 @@ fn track_template(json_obj: &mut json::JsonValue, template_name: &str, selected_
     }
 
     json_obj["themes"][selected_theme].push(template_name).unwrap();
+    
+    
 }
 
 fn main() {
@@ -235,16 +238,22 @@ fn main() {
                 let mut json_obj = json_util.read();
                 
                 for i in 2..args.len() {
-                    if !json_obj["groups"][&args[i]].is_null() {
-                        println!("From group '{}':", &args[i]);
-                        
-                        for templ in json_obj["groups"][&args[i]].clone().members() {
-                            print!("\t");
-                            track_template(&mut json_obj, templ.as_str().unwrap(), &selected_theme);
+                    if json_obj["selected"] != "none" {
+                        if !json_obj["groups"][&args[i]].is_null() {
+                            println!("From group '{}':", &args[i]);
+                            
+                            for templ in json_obj["groups"][&args[i]].clone().members() {
+                                print!("\t");
+                                track_template(&mut json_obj, templ.as_str().unwrap(), &selected_theme);
+                            }
+                        }
+                        else {
+                            track_template(&mut json_obj, &args[i], &selected_theme);
                         }
                     }
-                    else if json_obj["selected"] != "none" {
-                        track_template(&mut json_obj, &args[i], &selected_theme);
+                    else {
+                        println!("Error: select a theme first.");
+                        print_help(Help::Track);
                     }
                 }
                 
@@ -475,6 +484,11 @@ fn main() {
                 let temp_dir = ricem_dir.join("temp");
 
                 let json_obj = json_util.read();
+                if json_obj["selected"] == "none" {
+                    println!("Error: need to select a theme first.");
+                    print_help(Help::Select);
+                    return;
+                }
                 let mut to_add = vec![];
 
                 'outer: for (key, val) in json_obj["templates"].entries() {
